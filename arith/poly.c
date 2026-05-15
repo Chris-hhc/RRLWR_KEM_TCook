@@ -116,9 +116,9 @@ static void karatsuba32_simple_u16(const uint16_t *a,
   }
 }
 
-static void toom4_128_u16(const int16_t a[TOOM4_N],
-                          const int16_t b[TOOM4_N],
-                          uint16_t c[TOOM4_FULL_RES])
+static void toom4_128_fold_u16(const int16_t a[TOOM4_N],
+                               const int16_t b[TOOM4_N],
+                               uint16_t r[TOOM4_N])
 {
   const uint16_t inv3 = 43691;
   const uint16_t inv9 = 36409;
@@ -130,7 +130,7 @@ static void toom4_128_u16(const int16_t a[TOOM4_N],
   uint16_t w1[TOOM4_RES], w2[TOOM4_RES], w3[TOOM4_RES], w4[TOOM4_RES];
   uint16_t w5[TOOM4_RES], w6[TOOM4_RES], w7[TOOM4_RES];
 
-  memset(c, 0, TOOM4_FULL_RES * sizeof(uint16_t));
+  memset(r, 0, TOOM4_N * sizeof(uint16_t));
 
   for(unsigned int j = 0; j < TOOM4_BLK; j++) {
     uint16_t r0 = (uint16_t)a[j];
@@ -204,24 +204,25 @@ static void toom4_128_u16(const int16_t a[TOOM4_N],
     r2 = (uint16_t)(r2 - r4);
     r1 = (uint16_t)(r1 - r5);
 
-    c[i] += r6;
-    c[i + TOOM4_BLK] += r5;
-    c[i + 2 * TOOM4_BLK] += r4;
-    c[i + 3 * TOOM4_BLK] += r3;
-    c[i + 4 * TOOM4_BLK] += r2;
-    c[i + 5 * TOOM4_BLK] += r1;
-    c[i + 6 * TOOM4_BLK] += r0;
+    r[i] = (uint16_t)(r[i] + r6 - r2);
+    r[i + TOOM4_BLK] = (uint16_t)(r[i + TOOM4_BLK] + r5 - r1);
+    r[i + 2 * TOOM4_BLK] = (uint16_t)(r[i + 2 * TOOM4_BLK] + r4 - r0);
+    if(i < TOOM4_BLK) {
+      r[i + 3 * TOOM4_BLK] = (uint16_t)(r[i + 3 * TOOM4_BLK] + r3);
+    } else {
+      r[i - TOOM4_BLK] = (uint16_t)(r[i - TOOM4_BLK] - r3);
+    }
   }
 }
 
 void poly_mul_toom4(poly *r, const poly *f, const poly *g)
 {
-  uint16_t c[TOOM4_FULL_RES];
+  uint16_t folded[TOOM4_N];
 
-  toom4_128_u16(f->coeffs, g->coeffs, c);
+  toom4_128_fold_u16(f->coeffs, g->coeffs, folded);
 
   for(unsigned int i = 0; i < RRLWR_N; i++) {
-    r->coeffs[i] = reduce_mod_q((int32_t)(uint16_t)(c[i] - c[i + RRLWR_N]));
+    r->coeffs[i] = reduce_mod_q((int32_t)folded[i]);
   }
 }
 
