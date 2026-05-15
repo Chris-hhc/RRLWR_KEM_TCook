@@ -7,9 +7,9 @@ RM = /bin/rm
 BASE_FOLDER = .
 ARITH_FOLDER = ./arith
 UTILS_FOLDER = ./utils
-SOURCES_RRLWR = $(ARITH_FOLDER)/fprime.c $(ARITH_FOLDER)/poly.c $(ARITH_FOLDER)/ring.c $(ARITH_FOLDER)/packing.c $(ARITH_FOLDER)/uniform.c pke.c kem.c
+SOURCES_RRLWR = $(ARITH_FOLDER)/poly.c $(ARITH_FOLDER)/ring.c $(ARITH_FOLDER)/packing.c $(ARITH_FOLDER)/uniform.c pke.c kem.c
 SOURCES = $(SOURCES_RRLWR) $(UTILS_FOLDER)/fips202.c
-HEADERS_RRLWR = $(ARITH_FOLDER)/fprime.h $(ARITH_FOLDER)/poly.h $(ARITH_FOLDER)/ring.h $(ARITH_FOLDER)/packing.h $(ARITH_FOLDER)/uniform.h parameters.h pke.h kem.h
+HEADERS_RRLWR = $(ARITH_FOLDER)/poly.h $(ARITH_FOLDER)/ring.h $(ARITH_FOLDER)/packing.h $(ARITH_FOLDER)/uniform.h parameters.h pke.h kem.h
 HEADERS = $(HEADERS_RRLWR) $(UTILS_FOLDER)/fips202.h
 
 .PHONY: all test clean

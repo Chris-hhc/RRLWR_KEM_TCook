@@ -22,7 +22,7 @@ void poly_pack(unsigned char *b, poly *r, int32_t bitlen) {
   unsigned int acc_shift = 0; 
   unsigned int bpos = 0;
   poly rp;
-  int32_t *rc = rp.coeffs;
+  int16_t *rc = rp.coeffs;
   uint32_t acc = 0;
 
   // Make all coefficients from r positive
@@ -35,7 +35,7 @@ void poly_pack(unsigned char *b, poly *r, int32_t bitlen) {
 
       // Main packing loop
       for(i = 0; i < 32; i++) {
-        acc |= (uint32_t)(rc[i] << acc_shift); // Take the next bitlen bits
+        acc |= ((uint32_t)rc[i]) << acc_shift; // Take the next bitlen bits
         acc_shift += bitlen;
         while (acc_shift >= 8) {
           b[bpos++] = (unsigned char)(acc & 0xFF);
@@ -60,7 +60,7 @@ void poly_unpack(poly *r, const unsigned char *b, int32_t bitlen) {
   unsigned int i;
   int32_t acc_shift = 0; 
   unsigned int bpos = 0;
-  int32_t *rc = r->coeffs;
+  int16_t *rc = r->coeffs;
   uint32_t acc = 0;
 
   while (rc < r->coeffs + RRLWR_N) {
@@ -71,7 +71,7 @@ void poly_unpack(poly *r, const unsigned char *b, int32_t bitlen) {
           acc |= ((uint32_t)b[bpos++]) << acc_shift;
           acc_shift += 8;
         }
-        rc[i] = (int32_t)acc & (((int32_t)1 << bitlen)-1);
+        rc[i] = (int16_t)(acc & (((int32_t)1 << bitlen)-1));
         acc >>= bitlen;
         acc_shift -= bitlen;
       }
@@ -81,7 +81,7 @@ void poly_unpack(poly *r, const unsigned char *b, int32_t bitlen) {
 
   // Make all coefficients from r signed
   for(i = 0; i < RRLWR_N; i++) {
-    r->coeffs[i] = (((int32_t)1<<(bitlen-1))-1)-r->coeffs[i]; // Subtract from 2^bitlen/2-1 to move to interval [-bitlen/2, bitlen/2-1]
+    r->coeffs[i] = (int16_t)((((int32_t)1<<(bitlen-1))-1)-r->coeffs[i]); // Subtract from 2^bitlen/2-1 to move to interval [-bitlen/2, bitlen/2-1]
   }
 }
 

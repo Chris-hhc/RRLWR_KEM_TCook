@@ -16,99 +16,63 @@
 
 #include "ring.h"
 
-/// @brief Compute NTT(y+2) in Montgomery domain, on-the-fly only if PRECOMPUTE_TWIST is not defined
-static void compute_yp2(poly *r, int32_t prime, int32_t primeinv, int32_t fp_zetas[RRLWR_N], int32_t oneR, int32_t twoR)
+static int16_t reduce_mod_q(int32_t x)
 {
-  #ifdef PRECOMPUTE_TWIST
-    (void)prime;
-    (void)primeinv;
-    (void)fp_zetas;
-    (void)oneR;
-    (void)twoR;
-    #ifdef CRT
-    if(prime == RRLWR_SIGN_PRIME1) {
-      for(unsigned int i = 0; i < RRLWR_N; i++) {
-        r->coeffs[i] = precomputed_twist1[i];
-      }
-    } else if (prime == RRLWR_SIGN_PRIME2) {
-      for(unsigned int i = 0; i < RRLWR_N; i++) {
-        r->coeffs[i] = precomputed_twist2[i];
-      }
-    }
-    #else
-    for(unsigned int i = 0; i < RRLWR_N; i++) {
-      r->coeffs[i] = precomputed_twist[i];
-    }
-    #endif
-  #else
-    // Initialize the polynomial y+2 in Montgomery domain
-    r->coeffs[0] = twoR; // 2
-    r->coeffs[1] = oneR; // 1
-    for(unsigned int i = 2; i < RRLWR_N; i++) {
-      r->coeffs[i] = 0;
-    }
-    poly_ntt32(r, prime, primeinv, fp_zetas);
-  #endif
+  x &= ((int32_t)1 << RRLWR_PKE_LOGQ) - 1;
+  if(x >= ((int32_t)1 << (RRLWR_PKE_LOGQ - 1))) {
+    x -= (int32_t)1 << RRLWR_PKE_LOGQ;
+  }
+
+  return (int16_t)x;
 }
 
-void ring_ntt32(ring_element *r, int32_t prime, int32_t primeinv, int32_t fp_zetas[RRLWR_N]) {
-  for(int i = 0; i < RRLWR_K; i++) {
-    poly_ntt32(&r->x[i], prime, primeinv, fp_zetas);
+static void poly_zero(poly *r)
+{
+  for(unsigned int i = 0; i < RRLWR_N; i++) {
+    r->coeffs[i] = 0;
   }
 }
 
-/// @brief Full ring multiplication assuming its inputs are already in NTT domain.
-///        The output element r is not in NTT domain and is fully reduced with all coefficients in [-q/2, q/2+1]
-void ring_mul_invntt32(poly *r, ring_element *a, ring_element *b, int ncoeffs, int32_t prime, int32_t primeinv, int32_t finalconst, int32_t oneR, int32_t twoR, int32_t fp_zetas[RRLWR_N]) {
-  poly yp2, t;
-
-  if(RRLWR_K > 1) { // Not required if K = 1
-    compute_yp2(&yp2, prime, primeinv, fp_zetas, oneR, twoR); // NTT(y+2) in Montgomery domain
+static void poly_accumulate(poly *r, const poly *f)
+{
+  for(unsigned int i = 0; i < RRLWR_N; i++) {
+    r->coeffs[i] = reduce_mod_q((int32_t)r->coeffs[i] + f->coeffs[i]);
   }
+}
 
-  int rindex = ncoeffs-1;
+static void poly_mul_x_plus_2(poly *r, const poly *f)
+{
+  int32_t prev = f->coeffs[RRLWR_N - 1];
 
-  // Remaining rows of matrix multiplication that are needed according to ncoeffs
-  for(int i = RRLWR_K-1; i > RRLWR_K-1-ncoeffs; i--) {
+  for(unsigned int i = 0; i < RRLWR_N; i++) {
+    int32_t xterm = (i == 0) ? -prev : f->coeffs[i - 1];
+    r->coeffs[i] = reduce_mod_q(2 * (int32_t)f->coeffs[i] + xterm);
+  }
+}
 
-    for(int j = 0; j < RRLWR_N; j++) {
-      (r+rindex)->coeffs[j] = 0;
+/// @brief Ring multiplication over R_q with schoolbook polynomial products.
+void ring_mul(poly *r, const ring_element *a, const ring_element *b, int ncoeffs)
+{
+  poly t;
+  poly wrapped;
+  int rindex = ncoeffs - 1;
+
+  for(int i = RRLWR_K - 1; i > RRLWR_K - 1 - ncoeffs; i--) {
+    poly_zero(&r[rindex]);
+
+    for(int j = 0; j < i + 1; j++) {
+      poly_mul_schoolbook(&t, &a->x[i - j], &b->x[j]);
+      poly_accumulate(&r[rindex], &t);
     }
 
-    // Process row elements not multiplied by (y+2)
-    for(int j = 0; j < i+1; j++) {
-      poly_basemul32(&t, &a->x[i-j], &b->x[j], prime, primeinv); // Introduces a Montgomery factor R^-1
-      poly_add32(&r[rindex], &r[rindex], &t, prime);
-    }
-
-    // Multiply matrix element by (y+2)
-    if (i+1 < RRLWR_K) {
-      poly_basemul32(&a->x[i+1], &a->x[i+1], &yp2, prime, primeinv); // Montgomery factor R cancelled from yp2
-    }
-
-    // Process row elements multiplied by (y+2)
-    for(int j = i+1; j < RRLWR_K; j++) {
-      poly_basemul32(&t, &a->x[i-j+RRLWR_K], &b->x[j], prime, primeinv); // Introduces a Montgomery factor R^-1
-      poly_add32(&r[rindex], &r[rindex], &t, prime);
+    for(int j = i + 1; j < RRLWR_K; j++) {
+      poly_mul_schoolbook(&t, &a->x[i - j + RRLWR_K], &b->x[j]);
+      poly_mul_x_plus_2(&wrapped, &t);
+      poly_accumulate(&r[rindex], &wrapped);
     }
 
     rindex--;
   }
-
-  // Transfrom to polynomial domain
-  for(int i = 0; i < ncoeffs; i++) {
-    poly_invntt32(&r[i], prime, primeinv, finalconst, fp_zetas); // Removes the factor R^-1 in the final multiplication
-    poly_conditional_final_reduce32(&r[i], prime); // Reduce to unique representation in [-(p-1)/2+1, (p-1)/2]
-  }
-}
-
-/// @brief Full ring multiplication assuming its inputs are not yet in NTT domain.
-///        The output element r is not in NTT domain and is fully reduced with all coefficients in [-q/2, q/2+1]
-void ring_mul32(poly *r, ring_element *a, ring_element *b, int ncoeffs, int32_t prime, int32_t primeinv, int32_t finalconst, int32_t oneR, int32_t twoR, int32_t fp_zetas[RRLWR_N])
-{
-  ring_ntt32(a, prime, primeinv, fp_zetas);
-  ring_ntt32(b, prime, primeinv, fp_zetas);
-  ring_mul_invntt32(r, a, b, ncoeffs, prime, primeinv, finalconst, oneR, twoR, fp_zetas);
 }
 
 void ring_round_xtoy(ring_element *r, const ring_element *f, int32_t x, int32_t y) {
