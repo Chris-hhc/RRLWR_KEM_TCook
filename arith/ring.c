@@ -15,6 +15,7 @@
  */
 
 #include "ring.h"
+#include "uniform.h"
 
 static int16_t reduce_mod_q(int32_t x)
 {
@@ -50,29 +51,69 @@ static void poly_mul_x_plus_2(poly *r, const poly *f)
   }
 }
 
+void ring_to_Awin(ring_element_Awin *aw, const ring_element *a)
+{
+  for(unsigned int u = 0; u < RRLWR_K; u++) {
+    aw->x[RRLWR_K - 1 - u] = a->x[u];
+  }
+
+  for(unsigned int u = 1; u < RRLWR_K; u++) {
+    unsigned int base = RRLWR_K - 1 - u;
+    unsigned int dst = 2 * RRLWR_K - 1 - u;
+
+    poly_mul_x_plus_2(&aw->x[dst], &aw->x[base]);
+  }
+}
+
+void ring_uniform_Awin(ring_element_Awin *aw,
+                       int32_t bitlen,
+                       const unsigned char *seed,
+                       int32_t seed_len)
+{
+  poly a;
+
+  for(unsigned int u = 0; u < RRLWR_K; u++) {
+    poly_uniform(&a, bitlen, seed, seed_len, (unsigned char)u);
+    aw->x[RRLWR_K - 1 - u] = a;
+  }
+
+  for(unsigned int u = 1; u < RRLWR_K; u++) {
+    unsigned int base = RRLWR_K - 1 - u;
+    unsigned int dst = 2 * RRLWR_K - 1 - u;
+
+    poly_mul_x_plus_2(&aw->x[dst], &aw->x[base]);
+  }
+}
+
+/// @brief Ring multiplication over R_q using precomputed A-window rows.
+void ring_mul_Awin(poly *r,
+                   const ring_element_Awin *a,
+                   const ring_element *b,
+                   int ncoeffs)
+{
+  int row_min = RRLWR_K - ncoeffs;
+  poly t;
+
+  for(int i = RRLWR_K - 1; i >= row_min; i--) {
+    int out = i - row_min;
+    const poly *row = &a->x[RRLWR_K - 1 - i];
+
+    poly_zero(&r[out]);
+
+    for(int j = 0; j < RRLWR_K; j++) {
+      poly_mul_toom4(&t, &row[j], &b->x[j]);
+      poly_accumulate(&r[out], &t);
+    }
+  }
+}
+
 /// @brief Ring multiplication over R_q with schoolbook polynomial products.
 void ring_mul(poly *r, const ring_element *a, const ring_element *b, int ncoeffs)
 {
-  poly t;
-  poly wrapped;
-  int rindex = ncoeffs - 1;
+  ring_element_Awin aw;
 
-  for(int i = RRLWR_K - 1; i > RRLWR_K - 1 - ncoeffs; i--) {
-    poly_zero(&r[rindex]);
-
-    for(int j = 0; j < i + 1; j++) {
-      poly_mul_schoolbook(&t, &a->x[i - j], &b->x[j]);
-      poly_accumulate(&r[rindex], &t);
-    }
-
-    for(int j = i + 1; j < RRLWR_K; j++) {
-      poly_mul_schoolbook(&t, &a->x[i - j + RRLWR_K], &b->x[j]);
-      poly_mul_x_plus_2(&wrapped, &t);
-      poly_accumulate(&r[rindex], &wrapped);
-    }
-
-    rindex--;
-  }
+  ring_to_Awin(&aw, a);
+  ring_mul_Awin(r, &aw, b, ncoeffs);
 }
 
 void ring_round_xtoy(ring_element *r, const ring_element *f, int32_t x, int32_t y) {
