@@ -34,6 +34,7 @@ extern "C"
 
   void ring_uniform_Awin(ring_element_Awin *aw, int32_t bitlen, const unsigned char *seed, int32_t seed_len);
   void ring_to_Awin(ring_element_Awin *aw, const ring_element *a);
+  void ring_unpack_Awin(ring_element_Awin *aw, const unsigned char *b, int32_t bitlen);
   void ring_mul_Awin(poly *r, const ring_element_Awin *a, const ring_element *b, int ncoeffs);
   void ring_mul_Awin_round_p(poly *r, const ring_element_Awin *a, const ring_element *b, int ncoeffs);
   void ring_mul_Awin_add_msg_pack_t(unsigned char *ct,
