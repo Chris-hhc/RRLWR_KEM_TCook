@@ -23,16 +23,6 @@
 #define TOOM4_RES (2 * TOOM4_BLK - 1)
 #define TOOM4_FULL_RES (2 * RRLWR_N)
 
-static int16_t reduce_mod_q(int32_t x)
-{
-  x &= ((int32_t)1 << RRLWR_PKE_LOGQ) - 1;
-  if(x >= ((int32_t)1 << (RRLWR_PKE_LOGQ - 1))) {
-    x -= (int32_t)1 << RRLWR_PKE_LOGQ;
-  }
-
-  return (int16_t)x;
-}
-
 static void karatsuba32_simple_u16(const uint16_t *a,
                                    const uint16_t *b,
                                    uint16_t out[TOOM4_RES])
@@ -116,8 +106,8 @@ static void karatsuba32_simple_u16(const uint16_t *a,
   }
 }
 
-static void toom4_128_fold_u16(const int16_t a[TOOM4_N],
-                               const int16_t b[TOOM4_N],
+static void toom4_128_fold_u16(const uint16_t a[TOOM4_N],
+                               const uint16_t b[TOOM4_N],
                                uint16_t r[TOOM4_N],
                                int clear)
 {
@@ -136,10 +126,10 @@ static void toom4_128_fold_u16(const int16_t a[TOOM4_N],
   }
 
   for(unsigned int j = 0; j < TOOM4_BLK; j++) {
-    uint16_t r0 = (uint16_t)a[j];
-    uint16_t r1 = (uint16_t)a[TOOM4_BLK + j];
-    uint16_t r2 = (uint16_t)a[2 * TOOM4_BLK + j];
-    uint16_t r3 = (uint16_t)a[3 * TOOM4_BLK + j];
+    uint16_t r0 = a[j];
+    uint16_t r1 = a[TOOM4_BLK + j];
+    uint16_t r2 = a[2 * TOOM4_BLK + j];
+    uint16_t r3 = a[3 * TOOM4_BLK + j];
     uint16_t r4 = (uint16_t)(r0 + r2);
     uint16_t r5 = (uint16_t)(r1 + r3);
 
@@ -153,10 +143,10 @@ static void toom4_128_fold_u16(const int16_t a[TOOM4_N],
     aw7[j] = r0;
     aw1[j] = r3;
 
-    r0 = (uint16_t)b[j];
-    r1 = (uint16_t)b[TOOM4_BLK + j];
-    r2 = (uint16_t)b[2 * TOOM4_BLK + j];
-    r3 = (uint16_t)b[3 * TOOM4_BLK + j];
+    r0 = b[j];
+    r1 = b[TOOM4_BLK + j];
+    r2 = b[2 * TOOM4_BLK + j];
+    r3 = b[3 * TOOM4_BLK + j];
     r4 = (uint16_t)(r0 + r2);
     r5 = (uint16_t)(r1 + r3);
 
@@ -230,70 +220,71 @@ void poly_mul_toom4(poly *r, const poly *f, const poly *g)
   toom4_128_fold_u16(f->coeffs, g->coeffs, folded, 1);
 
   for(unsigned int i = 0; i < RRLWR_N; i++) {
-    r->coeffs[i] = reduce_mod_q((int32_t)folded[i]);
+    r->coeffs[i] = folded[i];
   }
 }
 
 void poly_mul_schoolbook(poly *r, const poly *f, const poly *g)
 {
-  int32_t acc[RRLWR_N] = {0};
+  uint16_t acc[RRLWR_N] = {0};
 
   for(unsigned int i = 0; i < RRLWR_N; i++) {
     for(unsigned int j = 0; j < RRLWR_N; j++) {
-      int32_t prod = (int32_t)f->coeffs[i] * g->coeffs[j];
+      uint16_t prod = (uint16_t)((uint32_t)f->coeffs[i] * g->coeffs[j]);
       unsigned int d = i + j;
 
       if(d < RRLWR_N) {
-        acc[d] += prod;
+        acc[d] = (uint16_t)(acc[d] + prod);
       } else {
-        acc[d - RRLWR_N] -= prod;
+        acc[d - RRLWR_N] = (uint16_t)(acc[d - RRLWR_N] - prod);
       }
     }
   }
 
   for(unsigned int i = 0; i < RRLWR_N; i++) {
-    r->coeffs[i] = reduce_mod_q(acc[i]);
+    r->coeffs[i] = acc[i];
   }
 }
 
 void poly_add(poly *r, poly *f, poly *g) {
   for(unsigned int i = 0; i < RRLWR_N; i++) {
-    r->coeffs[i] = reduce_mod_q((int32_t)f->coeffs[i] + g->coeffs[i]);
+    r->coeffs[i] = (uint16_t)(f->coeffs[i] + g->coeffs[i]);
   }
 }
 
 void poly_sub(poly *r, poly *f, poly *g) {
   for(unsigned int i = 0; i < RRLWR_N; i++) {
-    r->coeffs[i] = reduce_mod_q((int32_t)f->coeffs[i] - g->coeffs[i]);
+    r->coeffs[i] = (uint16_t)(f->coeffs[i] - g->coeffs[i]);
   }
 }
 
-/// @brief Reduce the input modulo 2**d into signed interval [-2**d/2, 2**d/2-1]
+/// @brief Reduce the input modulo 2**d into residue interval [0, 2**d-1]
 void poly_reduce_pow2(poly *r, poly *f, int32_t d) {
-  int32_t pow2div2 = (int32_t)1 << (d-1); // 2^d/2
   int32_t pow2 = (int32_t)1 << d;         // 2^d
   for(unsigned int i = 0; i < RRLWR_N; i++) {
-    r->coeffs[i] = (int16_t)(((f->coeffs[i] + pow2div2) & (pow2-1)) - pow2div2);
+    r->coeffs[i] = (uint16_t)(f->coeffs[i] & (pow2 - 1));
   }
 }
 
 void poly_round_xtoy(poly *r, const poly *f, int32_t x, int32_t y) {
   for(unsigned int i = 0; i < RRLWR_N; i++) {
-    int32_t c = f->coeffs[i] + ((int32_t)1 << (x-(y+1))); // Add constant x/(2*y)
+    int32_t c = (int16_t)(uint16_t)(f->coeffs[i] << (16 - x));
+    c >>= 16 - x;
+    c += (int32_t)1 << (x-(y+1));                         // Add constant x/(2*y)
     c >>= (x-y);                                          // Divide by x/y and floor
     c &= ((int32_t)1 << y)-1;                             // Reduce mod y
-    r->coeffs[i] = (int16_t)c;
+    r->coeffs[i] = (uint16_t)c;
   }
 }
 
 void poly_compress(poly *r, int32_t x) {
   for(unsigned int i = 0; i < RRLWR_N; i++) {
-    r->coeffs[i] = (int16_t)(r->coeffs[i] >> x);
+    r->coeffs[i] = (uint16_t)(r->coeffs[i] >> x);
   }
 }
 
 void poly_decompress(poly *r, int32_t x) {
   for(unsigned int i = 0; i < RRLWR_N; i++) {
-    r->coeffs[i] = (int16_t)(r->coeffs[i] << x);
+    r->coeffs[i] = (uint16_t)(r->coeffs[i] << x);
   }
 }

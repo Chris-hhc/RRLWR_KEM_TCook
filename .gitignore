@@ -2,9 +2,15 @@
 output/
 
 # Test binaries
-test/test_KEM*
-test/unit_tests_KEM*
-test/test_speed_KEM*
+test/test_KEM128
+test/test_KEM256
+test/test_KEM512
+test/unit_tests_KEM128
+test/unit_tests_KEM256
+test/unit_tests_KEM512
+test/test_speed_KEM128
+test/test_speed_KEM256
+test/test_speed_KEM512
 test/profile_KEM*
 
 # KAT binaries

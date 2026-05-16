@@ -18,39 +18,27 @@
 #include "packing.h"
 #include "uniform.h"
 
-static int16_t reduce_mod_q(int32_t x)
-{
-  x &= ((int32_t)1 << RRLWR_PKE_LOGQ) - 1;
-  if(x >= ((int32_t)1 << (RRLWR_PKE_LOGQ - 1))) {
-    x -= (int32_t)1 << RRLWR_PKE_LOGQ;
-  }
-
-  return (int16_t)x;
-}
-
-static int16_t round_q_to_p_from_u16(uint16_t x)
+static uint16_t round_q_to_p_from_u16(uint16_t x)
 {
 #if RRLWR_PKE_LOGQ == 13 && RRLWR_PKE_LOGP == 11
   int32_t c = (int16_t)(uint16_t)(x << 3);
   c = (c + 16) >> 5;
-  return (int16_t)(c & 0x7ff);
+  return (uint16_t)(c & 0x7ff);
 #else
   x <<= 16 - RRLWR_PKE_LOGQ;
   int32_t c = (int16_t)x;
   c >>= 16 - RRLWR_PKE_LOGQ;
   c += (int32_t)1 << (RRLWR_PKE_LOGQ - (RRLWR_PKE_LOGP + 1));
   c >>= RRLWR_PKE_LOGQ - RRLWR_PKE_LOGP;
-  return (int16_t)(c & (RRLWR_PKE_P - 1));
+  return (uint16_t)(c & (RRLWR_PKE_P - 1));
 #endif
 }
 
 static void poly_mul_x_plus_2(poly *r, const poly *f)
 {
-  int32_t prev = f->coeffs[RRLWR_N - 1];
-
   for(unsigned int i = 0; i < RRLWR_N; i++) {
-    int32_t xterm = (i == 0) ? -prev : f->coeffs[i - 1];
-    r->coeffs[i] = reduce_mod_q(2 * (int32_t)f->coeffs[i] + xterm);
+    uint16_t xterm = (i == 0) ? (uint16_t)(-f->coeffs[RRLWR_N - 1]) : f->coeffs[i - 1];
+    r->coeffs[i] = (uint16_t)(2 * f->coeffs[i] + xterm);
   }
 }
 
@@ -105,7 +93,7 @@ void ring_mul_Awin(poly *r,
     }
 
     for(unsigned int k = 0; k < RRLWR_N; k++) {
-      r[out].coeffs[k] = reduce_mod_q((int32_t)acc[k]);
+      r[out].coeffs[k] = acc[k];
     }
   }
 }

@@ -25,7 +25,7 @@ extern "C"
 #endif
 
   typedef struct{
-    int16_t coeffs[RRLWR_N];
+    uint16_t coeffs[RRLWR_N];
   } poly;
 
   void poly_macc_toom4_u16(uint16_t r[RRLWR_N], const poly *f, const poly *g);

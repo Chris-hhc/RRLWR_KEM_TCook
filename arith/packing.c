@@ -57,13 +57,15 @@ static void poly_pack_11(unsigned char *b, const poly *r)
 
 static void poly_unpack_2(poly *r, const unsigned char *b)
 {
+  const uint32_t qmask = RRLWR_PKE_Q - 1;
+
   for(unsigned int i = 0; i < RRLWR_N / 4; i++) {
     uint32_t x = b[i];
 
-    r->coeffs[4 * i + 0] = (int16_t)(1 - (int32_t)(x & 0x3));
-    r->coeffs[4 * i + 1] = (int16_t)(1 - (int32_t)((x >> 2) & 0x3));
-    r->coeffs[4 * i + 2] = (int16_t)(1 - (int32_t)((x >> 4) & 0x3));
-    r->coeffs[4 * i + 3] = (int16_t)(1 - (int32_t)(x >> 6));
+    r->coeffs[4 * i + 0] = (uint16_t)((1 - (int32_t)(x & 0x3)) & qmask);
+    r->coeffs[4 * i + 1] = (uint16_t)((1 - (int32_t)((x >> 2) & 0x3)) & qmask);
+    r->coeffs[4 * i + 2] = (uint16_t)((1 - (int32_t)((x >> 4) & 0x3)) & qmask);
+    r->coeffs[4 * i + 3] = (uint16_t)((1 - (int32_t)(x >> 6)) & qmask);
   }
 }
 
@@ -84,14 +86,14 @@ static void poly_unpack_13(poly *r, const unsigned char *b)
                    ((uint32_t)p[11] << 10)) & 0x1fff;
     uint32_t c7 = (((uint32_t)p[11] >> 3) | ((uint32_t)p[12] << 5)) & 0x1fff;
 
-    r->coeffs[8 * i + 0] = (int16_t)(4095 - (int32_t)c0);
-    r->coeffs[8 * i + 1] = (int16_t)(4095 - (int32_t)c1);
-    r->coeffs[8 * i + 2] = (int16_t)(4095 - (int32_t)c2);
-    r->coeffs[8 * i + 3] = (int16_t)(4095 - (int32_t)c3);
-    r->coeffs[8 * i + 4] = (int16_t)(4095 - (int32_t)c4);
-    r->coeffs[8 * i + 5] = (int16_t)(4095 - (int32_t)c5);
-    r->coeffs[8 * i + 6] = (int16_t)(4095 - (int32_t)c6);
-    r->coeffs[8 * i + 7] = (int16_t)(4095 - (int32_t)c7);
+    r->coeffs[8 * i + 0] = (uint16_t)((4095 - (int32_t)c0) & 0x1fff);
+    r->coeffs[8 * i + 1] = (uint16_t)((4095 - (int32_t)c1) & 0x1fff);
+    r->coeffs[8 * i + 2] = (uint16_t)((4095 - (int32_t)c2) & 0x1fff);
+    r->coeffs[8 * i + 3] = (uint16_t)((4095 - (int32_t)c3) & 0x1fff);
+    r->coeffs[8 * i + 4] = (uint16_t)((4095 - (int32_t)c4) & 0x1fff);
+    r->coeffs[8 * i + 5] = (uint16_t)((4095 - (int32_t)c5) & 0x1fff);
+    r->coeffs[8 * i + 6] = (uint16_t)((4095 - (int32_t)c6) & 0x1fff);
+    r->coeffs[8 * i + 7] = (uint16_t)((4095 - (int32_t)c7) & 0x1fff);
   }
 }
 
@@ -242,13 +244,14 @@ void poly_pack(unsigned char *b, poly *r, int32_t bitlen) {
   unsigned int acc_shift = 0; 
   unsigned int bpos = 0;
   poly rp;
-  int16_t *rc = rp.coeffs;
+  uint16_t *rc = rp.coeffs;
   uint32_t acc = 0;
 
   // Make all coefficients from r positive
   for(i = 0; i < RRLWR_N; i++) {
-    rp.coeffs[i] = (((int32_t)1<<(bitlen-1))-1)-r->coeffs[i]; // Subtract from 2^bitlen/2-1 to move to interval [0, bitlen-1]
-    rp.coeffs[i] &= ((int32_t)1<<bitlen)-1; // Remove any remaining sign bits
+    rp.coeffs[i] = (uint16_t)(((((int32_t)1 << (bitlen - 1)) - 1) -
+                               (int32_t)r->coeffs[i]) &
+                              (((int32_t)1 << bitlen) - 1));
   }
 
   while (rc < rp.coeffs + RRLWR_N) {
@@ -290,7 +293,7 @@ void poly_unpack(poly *r, const unsigned char *b, int32_t bitlen) {
   unsigned int i;
   int32_t acc_shift = 0; 
   unsigned int bpos = 0;
-  int16_t *rc = r->coeffs;
+  uint16_t *rc = r->coeffs;
   uint32_t acc = 0;
 
   while (rc < r->coeffs + RRLWR_N) {
@@ -301,7 +304,7 @@ void poly_unpack(poly *r, const unsigned char *b, int32_t bitlen) {
           acc |= ((uint32_t)b[bpos++]) << acc_shift;
           acc_shift += 8;
         }
-        rc[i] = (int16_t)(acc & (((int32_t)1 << bitlen)-1));
+        rc[i] = (uint16_t)(acc & (((int32_t)1 << bitlen)-1));
         acc >>= bitlen;
         acc_shift -= bitlen;
       }
@@ -309,9 +312,11 @@ void poly_unpack(poly *r, const unsigned char *b, int32_t bitlen) {
     rc += 32; // Unpack 32 coefficients at a time
   }
 
-  // Make all coefficients from r signed
+  // Convert packed coefficients to low-bit residues.
   for(i = 0; i < RRLWR_N; i++) {
-    r->coeffs[i] = (int16_t)((((int32_t)1<<(bitlen-1))-1)-r->coeffs[i]); // Subtract from 2^bitlen/2-1 to move to interval [-bitlen/2, bitlen/2-1]
+    r->coeffs[i] = (uint16_t)(((((int32_t)1 << (bitlen - 1)) - 1) -
+                               (int32_t)r->coeffs[i]) &
+                              (((int32_t)1 << bitlen) - 1));
   }
 }
 
