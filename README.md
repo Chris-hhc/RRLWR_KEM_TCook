@@ -40,12 +40,12 @@ Commands:
 
 | Stage | RRLWR-128 (median cycles) | Kyber512 (median cycles) | Faster |
 | --- | ---: | ---: | --- |
-| PKE keygen | 87,140 | **84,023** | Kyber512 |
-| PKE encrypt | **105,555** | 111,851 | RRLWR-128 |
-| PKE decrypt | **20,645** | 37,984 | RRLWR-128 |
-| KEM keygen | 108,115 | **99,434** | Kyber512 |
-| KEM encaps | **119,382** | 123,198 | RRLWR-128 |
-| KEM decaps | **136,771** | 161,816 | RRLWR-128 |
+| PKE keygen | **81,282** | 84,023 | RRLWR-128 |
+| PKE encrypt | **99,109** | 111,851 | RRLWR-128 |
+| PKE decrypt | **19,277** | 37,984 | RRLWR-128 |
+| KEM keygen | 101,535 | **99,434** | Kyber512 |
+| KEM encaps | **113,096** | 123,198 | RRLWR-128 |
+| KEM decaps | **129,368** | 161,816 | RRLWR-128 |
 
 ## RRLWR-256 vs Kyber1024
 
@@ -59,12 +59,12 @@ Commands:
 
 | Stage | RRLWR-256 (median cycles) | Kyber1024 (median cycles) | Faster |
 | --- | ---: | ---: | --- |
-| PKE keygen | 237,057 | **218,874** | Kyber1024 |
-| PKE encrypt | 287,678 | **268,328** | Kyber1024 |
-| PKE decrypt | **59,175** | 63,355 | RRLWR-256 |
-| KEM keygen | 267,196 | **265,411** | Kyber1024 |
-| KEM encaps | 308,703 | **287,059** | Kyber1024 |
-| KEM decaps | 365,250 | **353,471** | Kyber1024 |
+| PKE keygen | 236,692 | **218,874** | Kyber1024 |
+| PKE encrypt | 286,728 | **268,328** | Kyber1024 |
+| PKE decrypt | **58,724** | 63,355 | RRLWR-256 |
+| KEM keygen | **265,001** | 265,411 | RRLWR-256 |
+| KEM encaps | 307,676 | **287,059** | Kyber1024 |
+| KEM decaps | 365,311 | **353,471** | Kyber1024 |
 
 ## RRLWR-512 Standalone
 

@@ -55,6 +55,46 @@ static void poly_pack_11(unsigned char *b, const poly *r)
   }
 }
 
+static void poly_unpack_2(poly *r, const unsigned char *b)
+{
+  for(unsigned int i = 0; i < RRLWR_N / 4; i++) {
+    uint32_t x = b[i];
+
+    r->coeffs[4 * i + 0] = (int16_t)(1 - (int32_t)(x & 0x3));
+    r->coeffs[4 * i + 1] = (int16_t)(1 - (int32_t)((x >> 2) & 0x3));
+    r->coeffs[4 * i + 2] = (int16_t)(1 - (int32_t)((x >> 4) & 0x3));
+    r->coeffs[4 * i + 3] = (int16_t)(1 - (int32_t)(x >> 6));
+  }
+}
+
+static void poly_unpack_13(poly *r, const unsigned char *b)
+{
+  for(unsigned int i = 0; i < RRLWR_N / 8; i++) {
+    const unsigned char *p = b + 13 * i;
+    uint32_t c0 = ((uint32_t)p[0] | ((uint32_t)p[1] << 8)) & 0x1fff;
+    uint32_t c1 = (((uint32_t)p[1] >> 5) | ((uint32_t)p[2] << 3) |
+                   ((uint32_t)p[3] << 11)) & 0x1fff;
+    uint32_t c2 = (((uint32_t)p[3] >> 2) | ((uint32_t)p[4] << 6)) & 0x1fff;
+    uint32_t c3 = (((uint32_t)p[4] >> 7) | ((uint32_t)p[5] << 1) |
+                   ((uint32_t)p[6] << 9)) & 0x1fff;
+    uint32_t c4 = (((uint32_t)p[6] >> 4) | ((uint32_t)p[7] << 4) |
+                   ((uint32_t)p[8] << 12)) & 0x1fff;
+    uint32_t c5 = (((uint32_t)p[8] >> 1) | ((uint32_t)p[9] << 7)) & 0x1fff;
+    uint32_t c6 = (((uint32_t)p[9] >> 6) | ((uint32_t)p[10] << 2) |
+                   ((uint32_t)p[11] << 10)) & 0x1fff;
+    uint32_t c7 = (((uint32_t)p[11] >> 3) | ((uint32_t)p[12] << 5)) & 0x1fff;
+
+    r->coeffs[8 * i + 0] = (int16_t)(4095 - (int32_t)c0);
+    r->coeffs[8 * i + 1] = (int16_t)(4095 - (int32_t)c1);
+    r->coeffs[8 * i + 2] = (int16_t)(4095 - (int32_t)c2);
+    r->coeffs[8 * i + 3] = (int16_t)(4095 - (int32_t)c3);
+    r->coeffs[8 * i + 4] = (int16_t)(4095 - (int32_t)c4);
+    r->coeffs[8 * i + 5] = (int16_t)(4095 - (int32_t)c5);
+    r->coeffs[8 * i + 6] = (int16_t)(4095 - (int32_t)c6);
+    r->coeffs[8 * i + 7] = (int16_t)(4095 - (int32_t)c7);
+  }
+}
+
 /// @brief Pack a polynomial with coefficients in [-bitlen/2, bitlen/2-1] into a byte string of bitlen bits per coefficient
 void poly_pack(unsigned char *b, poly *r, int32_t bitlen) {
   if(bitlen == 2) {
@@ -106,6 +146,16 @@ void ring_pack(unsigned char *b, ring_element *r, int32_t bitlen) {
 
 /// @brief Unpack a polynomial with coefficients in [-bitlen/2, bitlen/2-1] from a byte string of bitlen bits per coefficient
 void poly_unpack(poly *r, const unsigned char *b, int32_t bitlen) {
+  if(bitlen == 2) {
+    poly_unpack_2(r, b);
+    return;
+  }
+
+  if(bitlen == 13) {
+    poly_unpack_13(r, b);
+    return;
+  }
+
   unsigned int i;
   int32_t acc_shift = 0; 
   unsigned int bpos = 0;
