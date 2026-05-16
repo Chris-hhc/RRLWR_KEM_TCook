@@ -15,6 +15,7 @@ test/perf.data
 perf.data
 
 # Local generated / unpacked artifacts
+doc/
 docs/
 direct-awin-unpack.patch
 

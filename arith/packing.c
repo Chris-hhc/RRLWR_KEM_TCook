@@ -95,6 +95,137 @@ static void poly_unpack_13(poly *r, const unsigned char *b)
   }
 }
 
+#if RRLWR_PKE_LOGT != 3 && RRLWR_PKE_LOGT != 8
+static uint32_t encrypt_t_coeff(uint16_t x,
+                                const unsigned char *msg,
+                                unsigned int out,
+                                unsigned int k)
+{
+  uint32_t mj = (msg[out * RRLWR_N / 8 + (k >> 3)] >> (k & 0x7)) & 1;
+  uint32_t c = (uint32_t)x;
+
+  c = (c + ((uint32_t)1 << (RRLWR_PKE_LOGQ - (RRLWR_PKE_LOGP + 1))) +
+       (-mj & ((uint32_t)1 << (RRLWR_PKE_LOGP - 1)))) &
+      (RRLWR_PKE_P - 1);
+  c >>= RRLWR_PKE_LOGP - RRLWR_PKE_LOGT;
+  c = (((uint32_t)1 << (RRLWR_PKE_LOGT - 1)) - 1 - c) &
+      (((uint32_t)1 << RRLWR_PKE_LOGT) - 1);
+
+  return c;
+}
+#endif
+
+void poly_pack_ciphertext_t_from_acc_msg(unsigned char *ct,
+                                         const uint16_t acc[RRLWR_N],
+                                         const unsigned char msg[RRLWR_PKE_MESSAGE_LEN],
+                                         unsigned int out)
+{
+#if RRLWR_PKE_LOGT == 3
+  for(unsigned int i = 0; i < RRLWR_N / 8; i++) {
+    unsigned int k = 8 * i;
+    uint32_t m = msg[out * RRLWR_N / 8 + i];
+    uint32_t c0 = (3 - (((uint32_t)acc[k + 0] + 2) & 0x7ff) / 256 - ((m & 1) << 2)) & 7;
+    uint32_t c1 = (3 - (((uint32_t)acc[k + 1] + 2) & 0x7ff) / 256 - (((m >> 1) & 1) << 2)) & 7;
+    uint32_t c2 = (3 - (((uint32_t)acc[k + 2] + 2) & 0x7ff) / 256 - (((m >> 2) & 1) << 2)) & 7;
+    uint32_t c3 = (3 - (((uint32_t)acc[k + 3] + 2) & 0x7ff) / 256 - (((m >> 3) & 1) << 2)) & 7;
+    uint32_t c4 = (3 - (((uint32_t)acc[k + 4] + 2) & 0x7ff) / 256 - (((m >> 4) & 1) << 2)) & 7;
+    uint32_t c5 = (3 - (((uint32_t)acc[k + 5] + 2) & 0x7ff) / 256 - (((m >> 5) & 1) << 2)) & 7;
+    uint32_t c6 = (3 - (((uint32_t)acc[k + 6] + 2) & 0x7ff) / 256 - (((m >> 6) & 1) << 2)) & 7;
+    uint32_t c7 = (3 - (((uint32_t)acc[k + 7] + 2) & 0x7ff) / 256 - ((m >> 7) << 2)) & 7;
+    unsigned int p = 3 * i;
+
+    ct[p + 0] = (unsigned char)(c0 | (c1 << 3) | (c2 << 6));
+    ct[p + 1] = (unsigned char)((c2 >> 2) | (c3 << 1) | (c4 << 4) | (c5 << 7));
+    ct[p + 2] = (unsigned char)((c5 >> 1) | (c6 << 2) | (c7 << 5));
+  }
+#elif RRLWR_PKE_LOGT == 8
+  for(unsigned int i = 0; i < RRLWR_N / 8; i++) {
+    unsigned int k = 8 * i;
+    uint32_t m = msg[out * RRLWR_N / 8 + i];
+
+    ct[k + 0] = (unsigned char)((127 - ((((uint32_t)acc[k + 0] + 2) & 0x7ff) >> 3) - ((m & 1) << 7)) & 0xff);
+    ct[k + 1] = (unsigned char)((127 - ((((uint32_t)acc[k + 1] + 2) & 0x7ff) >> 3) - (((m >> 1) & 1) << 7)) & 0xff);
+    ct[k + 2] = (unsigned char)((127 - ((((uint32_t)acc[k + 2] + 2) & 0x7ff) >> 3) - (((m >> 2) & 1) << 7)) & 0xff);
+    ct[k + 3] = (unsigned char)((127 - ((((uint32_t)acc[k + 3] + 2) & 0x7ff) >> 3) - (((m >> 3) & 1) << 7)) & 0xff);
+    ct[k + 4] = (unsigned char)((127 - ((((uint32_t)acc[k + 4] + 2) & 0x7ff) >> 3) - (((m >> 4) & 1) << 7)) & 0xff);
+    ct[k + 5] = (unsigned char)((127 - ((((uint32_t)acc[k + 5] + 2) & 0x7ff) >> 3) - (((m >> 5) & 1) << 7)) & 0xff);
+    ct[k + 6] = (unsigned char)((127 - ((((uint32_t)acc[k + 6] + 2) & 0x7ff) >> 3) - (((m >> 6) & 1) << 7)) & 0xff);
+    ct[k + 7] = (unsigned char)((127 - ((((uint32_t)acc[k + 7] + 2) & 0x7ff) >> 3) - ((m >> 7) << 7)) & 0xff);
+  }
+#else
+  unsigned int acc_shift = 0;
+  unsigned int bpos = 0;
+  uint32_t pack_acc = 0;
+
+  for(unsigned int k = 0; k < RRLWR_N; k++) {
+    pack_acc |= encrypt_t_coeff(acc[k], msg, out, k) << acc_shift;
+    acc_shift += RRLWR_PKE_LOGT;
+    while(acc_shift >= 8) {
+      ct[bpos++] = (unsigned char)(pack_acc & 0xff);
+      pack_acc >>= 8;
+      acc_shift -= 8;
+    }
+  }
+#endif
+}
+
+void poly_pack_message_from_acc_cm(unsigned char *m,
+                                   const uint16_t acc[RRLWR_N],
+                                   const unsigned char *cm)
+{
+#if RRLWR_PKE_LOGT == 3
+  for(unsigned int i = 0; i < RRLWR_N / 8; i++) {
+    unsigned int k = 8 * i;
+    uint32_t c0 = cm[3 * i + 0] & 0x7;
+    uint32_t c1 = (cm[3 * i + 0] >> 3) & 0x7;
+    uint32_t c2 = ((cm[3 * i + 0] >> 6) | (cm[3 * i + 1] << 2)) & 0x7;
+    uint32_t c3 = (cm[3 * i + 1] >> 1) & 0x7;
+    uint32_t c4 = (cm[3 * i + 1] >> 4) & 0x7;
+    uint32_t c5 = ((cm[3 * i + 1] >> 7) | (cm[3 * i + 2] << 1)) & 0x7;
+    uint32_t c6 = (cm[3 * i + 2] >> 2) & 0x7;
+    uint32_t c7 = cm[3 * i + 2] >> 5;
+    uint32_t b0 = ((((((uint32_t)acc[k + 0] & 0x7ff) - ((3 - c0) << 8) + 126) & 0x7ff) + 512) >> 10) & 1;
+    uint32_t b1 = ((((((uint32_t)acc[k + 1] & 0x7ff) - ((3 - c1) << 8) + 126) & 0x7ff) + 512) >> 10) & 1;
+    uint32_t b2 = ((((((uint32_t)acc[k + 2] & 0x7ff) - ((3 - c2) << 8) + 126) & 0x7ff) + 512) >> 10) & 1;
+    uint32_t b3 = ((((((uint32_t)acc[k + 3] & 0x7ff) - ((3 - c3) << 8) + 126) & 0x7ff) + 512) >> 10) & 1;
+    uint32_t b4 = ((((((uint32_t)acc[k + 4] & 0x7ff) - ((3 - c4) << 8) + 126) & 0x7ff) + 512) >> 10) & 1;
+    uint32_t b5 = ((((((uint32_t)acc[k + 5] & 0x7ff) - ((3 - c5) << 8) + 126) & 0x7ff) + 512) >> 10) & 1;
+    uint32_t b6 = ((((((uint32_t)acc[k + 6] & 0x7ff) - ((3 - c6) << 8) + 126) & 0x7ff) + 512) >> 10) & 1;
+    uint32_t b7 = ((((((uint32_t)acc[k + 7] & 0x7ff) - ((3 - c7) << 8) + 126) & 0x7ff) + 512) >> 10) & 1;
+
+    m[i] = (unsigned char)(b0 | (b1 << 1) | (b2 << 2) | (b3 << 3) |
+                           (b4 << 4) | (b5 << 5) | (b6 << 6) | (b7 << 7));
+  }
+#elif RRLWR_PKE_LOGT == 8
+  for(unsigned int i = 0; i < RRLWR_N / 8; i++) {
+    unsigned int k = 8 * i;
+    uint32_t c0 = cm[k + 0];
+    uint32_t c1 = cm[k + 1];
+    uint32_t c2 = cm[k + 2];
+    uint32_t c3 = cm[k + 3];
+    uint32_t c4 = cm[k + 4];
+    uint32_t c5 = cm[k + 5];
+    uint32_t c6 = cm[k + 6];
+    uint32_t c7 = cm[k + 7];
+    uint32_t b0 = ((((((uint32_t)acc[k + 0] & 0x7ff) - ((127 - c0) << 3) + 2) & 0x7ff) + 512) >> 10) & 1;
+    uint32_t b1 = ((((((uint32_t)acc[k + 1] & 0x7ff) - ((127 - c1) << 3) + 2) & 0x7ff) + 512) >> 10) & 1;
+    uint32_t b2 = ((((((uint32_t)acc[k + 2] & 0x7ff) - ((127 - c2) << 3) + 2) & 0x7ff) + 512) >> 10) & 1;
+    uint32_t b3 = ((((((uint32_t)acc[k + 3] & 0x7ff) - ((127 - c3) << 3) + 2) & 0x7ff) + 512) >> 10) & 1;
+    uint32_t b4 = ((((((uint32_t)acc[k + 4] & 0x7ff) - ((127 - c4) << 3) + 2) & 0x7ff) + 512) >> 10) & 1;
+    uint32_t b5 = ((((((uint32_t)acc[k + 5] & 0x7ff) - ((127 - c5) << 3) + 2) & 0x7ff) + 512) >> 10) & 1;
+    uint32_t b6 = ((((((uint32_t)acc[k + 6] & 0x7ff) - ((127 - c6) << 3) + 2) & 0x7ff) + 512) >> 10) & 1;
+    uint32_t b7 = ((((((uint32_t)acc[k + 7] & 0x7ff) - ((127 - c7) << 3) + 2) & 0x7ff) + 512) >> 10) & 1;
+
+    m[i] = (unsigned char)(b0 | (b1 << 1) | (b2 << 2) | (b3 << 3) |
+                           (b4 << 4) | (b5 << 5) | (b6 << 6) | (b7 << 7));
+  }
+#else
+  for(unsigned int i = 0; i < RRLWR_N / 8; i++) {
+    m[i] = 0;
+  }
+#endif
+}
+
 /// @brief Pack a polynomial with coefficients in [-bitlen/2, bitlen/2-1] into a byte string of bitlen bits per coefficient
 void poly_pack(unsigned char *b, poly *r, int32_t bitlen) {
   if(bitlen == 2) {

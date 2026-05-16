@@ -47,7 +47,7 @@ uint8_t ct_cmp(const unsigned char *c1, const unsigned char *c2) {
 }
 
 int pke_keygen(unsigned char pk[RRLWR_PKE_PK_LEN], unsigned char sk[RRLWR_PKE_SK_LEN],
-               const unsigned char seedA[RRLWR_PKE_SEED_A_LEN], const unsigned char seedS[RRLWR_SEED_S_LEN]) {
+	               const unsigned char seedA[RRLWR_PKE_SEED_A_LEN], const unsigned char seedS[RRLWR_SEED_S_LEN]) {
 
   ring_element_Awin a;
   ring_element s, b;
@@ -59,11 +59,8 @@ int pke_keygen(unsigned char pk[RRLWR_PKE_PK_LEN], unsigned char sk[RRLWR_PKE_SK
   ring_uniform(&s, RRLWR_PKE_LOG_ETA+1, seedS, RRLWR_SEED_S_LEN);
   ring_pack(sk, &s, RRLWR_PKE_LOG_ETA+1);
 
-  // Compute A*s
-  ring_mul_Awin(b.x, &a, &s, RRLWR_K);
-
-  // Compute b = round(p/q*A*s) computed as (A*s + q/(2*p)) >> (eq - ep)
-  ring_round_xtoy(&b, &b, RRLWR_PKE_LOGQ, RRLWR_PKE_LOGP);
+  // Compute b = round(p/q*A*s) directly from the lazy R_q accumulator.
+  ring_mul_Awin_round_p(b.x, &a, &s, RRLWR_K);
 
   // Pack the public key
   for (unsigned int i = 0; i < RRLWR_PKE_SEED_A_LEN; i++) {
@@ -80,7 +77,6 @@ int pke_encrypt(unsigned char ct[RRLWR_PKE_CT_LEN], const unsigned char pk[RRLWR
   ring_element_Awin a;
   ring_element_Awin bw;
   ring_element sp, b, bp;
-  poly vp[RRLWR_PKE_ELL];
   const unsigned char *seedA = &pk[0];
 
   // Generate a with coefficients in [-q/2+1, q/2]
@@ -89,25 +85,13 @@ int pke_encrypt(unsigned char ct[RRLWR_PKE_CT_LEN], const unsigned char pk[RRLWR
   // Generate s_prime with coefficients in [-2, 1]
   ring_uniform(&sp, RRLWR_PKE_LOG_ETA+1, seedSp, RRLWR_SEED_S_LEN);
 
-  // Compute A*s_prime
-  ring_mul_Awin(bp.x, &a, &sp, RRLWR_K);
-
-  // Compute b_prime = round(p/q*A*s_prime)
-  ring_round_xtoy(&bp, &bp, RRLWR_PKE_LOGQ, RRLWR_PKE_LOGP);
+  // Compute b_prime = round(p/q*A*s_prime) directly from the lazy R_q accumulator.
+  ring_mul_Awin_round_p(bp.x, &a, &sp, RRLWR_K);
 
   // Compute v_prime = b*s_prime
   ring_unpack(&b, pk + RRLWR_PKE_SEED_A_LEN, RRLWR_PKE_LOGP);
   ring_to_Awin(&bw, &b);
-  ring_mul_Awin(vp, &bw, &sp, RRLWR_PKE_ELL);
-
-  // Convert message to polynomial representation and compute (v_prime + q/(2*p) + p/2*m) mod p
-  poly_add_msg(vp, m);
-
-  // Round from R_p to R_t with result in [-t/2+1, t/2] and pack into ciphertext buffer
-  for(unsigned int i = 0; i < RRLWR_PKE_ELL; i++) {
-    poly_compress(&vp[i], RRLWR_PKE_LOGP - RRLWR_PKE_LOGT); // Multiply by t/p and floor
-    poly_pack(ct + i*RRLWR_PKE_PACKED_POLYT_LEN, &vp[i], RRLWR_PKE_LOGT);
-  }
+  ring_mul_Awin_add_msg_pack_t(ct, &bw, &sp, m);
 
   // Return ct = (cm = vp, b) and sk = s
   ring_pack(ct + RRLWR_PKE_ELL*RRLWR_PKE_PACKED_POLYT_LEN, &bp, RRLWR_PKE_LOGP);
@@ -119,26 +103,14 @@ int pke_decrypt(unsigned char m[RRLWR_PKE_MESSAGE_LEN],
                 const unsigned char ct[RRLWR_PKE_CT_LEN], const unsigned char sk[RRLWR_PKE_SK_LEN]) {
   ring_element bp, s;
   ring_element_Awin bpw;
-  poly v[RRLWR_PKE_ELL];
-  poly cm[RRLWR_PKE_ELL];
 
-  // Unpack s, b and cm and decompress cm
+  // Unpack s and b.
   ring_unpack(&s, sk, RRLWR_PKE_LOG_ETA+1);
   ring_unpack(&bp, ct + RRLWR_PKE_ELL*RRLWR_PKE_PACKED_POLYT_LEN, RRLWR_PKE_LOGP);
-  for(unsigned int i = 0; i < RRLWR_PKE_ELL; i++) {
-    poly_unpack(&cm[i], ct + i*RRLWR_PKE_PACKED_POLYT_LEN, RRLWR_PKE_LOGT);
-    poly_decompress(&cm[i], RRLWR_PKE_LOGP - RRLWR_PKE_LOGT); // Multiply by p/t
-  }
 
-  // Compute v = b_prime*s
+  // Compute v = b_prime*s, subtract cm, round to message bits, and pack.
   ring_to_Awin(&bpw, &bp);
-  ring_mul_Awin(v, &bpw, &s, RRLWR_PKE_ELL); 
-
-  for(unsigned int i = 0; i < RRLWR_PKE_ELL; i++) {
-    poly_subp(&v[i], &v[i], &cm[i]);                     // Compute (v - (p/t)*cm) mod p
-    poly_round_xtoy(&v[i], &v[i], RRLWR_PKE_LOGP, 1);    // Round to a single-bit message polynomial m'
-    poly_pack(m + i*RRLWR_PKE_PACKED_POLY1_LEN, &v[i], 1); // Convert the message polynomial to a bit string
-  }
+  ring_mul_Awin_sub_cm_pack_msg(m, &bpw, &s, ct);
 
   return 0;
 }

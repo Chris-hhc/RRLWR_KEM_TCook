@@ -15,6 +15,7 @@
  */
 
 #include "ring.h"
+#include "packing.h"
 #include "uniform.h"
 
 static int16_t reduce_mod_q(int32_t x)
@@ -25,6 +26,22 @@ static int16_t reduce_mod_q(int32_t x)
   }
 
   return (int16_t)x;
+}
+
+static int16_t round_q_to_p_from_u16(uint16_t x)
+{
+#if RRLWR_PKE_LOGQ == 13 && RRLWR_PKE_LOGP == 11
+  int32_t c = (int16_t)(uint16_t)(x << 3);
+  c = (c + 16) >> 5;
+  return (int16_t)(c & 0x7ff);
+#else
+  x <<= 16 - RRLWR_PKE_LOGQ;
+  int32_t c = (int16_t)x;
+  c >>= 16 - RRLWR_PKE_LOGQ;
+  c += (int32_t)1 << (RRLWR_PKE_LOGQ - (RRLWR_PKE_LOGP + 1));
+  c >>= RRLWR_PKE_LOGQ - RRLWR_PKE_LOGP;
+  return (int16_t)(c & (RRLWR_PKE_P - 1));
+#endif
 }
 
 static void poly_mul_x_plus_2(poly *r, const poly *f)
@@ -90,6 +107,86 @@ void ring_mul_Awin(poly *r,
     for(unsigned int k = 0; k < RRLWR_N; k++) {
       r[out].coeffs[k] = reduce_mod_q((int32_t)acc[k]);
     }
+  }
+}
+
+/// @brief Ring multiplication followed directly by rounding from R_q to R_p.
+void ring_mul_Awin_round_p(poly *r,
+                           const ring_element_Awin *a,
+                           const ring_element *b,
+                           int ncoeffs)
+{
+  int row_min = RRLWR_K - ncoeffs;
+  uint16_t acc[RRLWR_N];
+
+  for(int i = RRLWR_K - 1; i >= row_min; i--) {
+    int out = i - row_min;
+    const poly *row = &a->x[RRLWR_K - 1 - i];
+
+    for(unsigned int k = 0; k < RRLWR_N; k++) {
+      acc[k] = 0;
+    }
+
+    for(int j = 0; j < RRLWR_K; j++) {
+      poly_macc_toom4_u16(acc, &row[j], &b->x[j]);
+    }
+
+    for(unsigned int k = 0; k < RRLWR_N; k++) {
+      r[out].coeffs[k] = round_q_to_p_from_u16(acc[k]);
+    }
+  }
+}
+
+void ring_mul_Awin_add_msg_pack_t(unsigned char *ct,
+                                  const ring_element_Awin *a,
+                                  const ring_element *b,
+                                  const unsigned char msg[RRLWR_PKE_MESSAGE_LEN])
+{
+  int row_min = RRLWR_K - RRLWR_PKE_ELL;
+  uint16_t acc[RRLWR_N];
+
+  for(int i = RRLWR_K - 1; i >= row_min; i--) {
+    unsigned int out = (unsigned int)(i - row_min);
+    const poly *row = &a->x[RRLWR_K - 1 - i];
+
+    for(unsigned int k = 0; k < RRLWR_N; k++) {
+      acc[k] = 0;
+    }
+
+    for(int j = 0; j < RRLWR_K; j++) {
+      poly_macc_toom4_u16(acc, &row[j], &b->x[j]);
+    }
+
+    poly_pack_ciphertext_t_from_acc_msg(ct + out * RRLWR_PKE_PACKED_POLYT_LEN,
+                                        acc,
+                                        msg,
+                                        out);
+  }
+}
+
+void ring_mul_Awin_sub_cm_pack_msg(unsigned char *m,
+                                   const ring_element_Awin *a,
+                                   const ring_element *b,
+                                   const unsigned char *ct)
+{
+  int row_min = RRLWR_K - RRLWR_PKE_ELL;
+  uint16_t acc[RRLWR_N];
+
+  for(int i = RRLWR_K - 1; i >= row_min; i--) {
+    unsigned int out = (unsigned int)(i - row_min);
+    const poly *row = &a->x[RRLWR_K - 1 - i];
+
+    for(unsigned int k = 0; k < RRLWR_N; k++) {
+      acc[k] = 0;
+    }
+
+    for(int j = 0; j < RRLWR_K; j++) {
+      poly_macc_toom4_u16(acc, &row[j], &b->x[j]);
+    }
+
+    poly_pack_message_from_acc_cm(m + out * RRLWR_PKE_PACKED_POLY1_LEN,
+                                  acc,
+                                  ct + out * RRLWR_PKE_PACKED_POLYT_LEN);
   }
 }
 
