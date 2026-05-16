@@ -69,6 +69,32 @@ static void poly_unpack_2(poly *r, const unsigned char *b)
   }
 }
 
+static void poly_unpack_11(poly *r, const unsigned char *b)
+{
+  for(unsigned int i = 0; i < RRLWR_N / 8; i++) {
+    const unsigned char *p = b + 11 * i;
+    uint32_t c0 = ((uint32_t)p[0] | ((uint32_t)p[1] << 8)) & 0x7ff;
+    uint32_t c1 = (((uint32_t)p[1] >> 3) | ((uint32_t)p[2] << 5)) & 0x7ff;
+    uint32_t c2 = (((uint32_t)p[2] >> 6) | ((uint32_t)p[3] << 2) |
+                   ((uint32_t)p[4] << 10)) & 0x7ff;
+    uint32_t c3 = (((uint32_t)p[4] >> 1) | ((uint32_t)p[5] << 7)) & 0x7ff;
+    uint32_t c4 = (((uint32_t)p[5] >> 4) | ((uint32_t)p[6] << 4)) & 0x7ff;
+    uint32_t c5 = (((uint32_t)p[6] >> 7) | ((uint32_t)p[7] << 1) |
+                   ((uint32_t)p[8] << 9)) & 0x7ff;
+    uint32_t c6 = (((uint32_t)p[8] >> 2) | ((uint32_t)p[9] << 6)) & 0x7ff;
+    uint32_t c7 = (((uint32_t)p[9] >> 5) | ((uint32_t)p[10] << 3)) & 0x7ff;
+
+    r->coeffs[8 * i + 0] = (uint16_t)((1023 - (int32_t)c0) & 0x7ff);
+    r->coeffs[8 * i + 1] = (uint16_t)((1023 - (int32_t)c1) & 0x7ff);
+    r->coeffs[8 * i + 2] = (uint16_t)((1023 - (int32_t)c2) & 0x7ff);
+    r->coeffs[8 * i + 3] = (uint16_t)((1023 - (int32_t)c3) & 0x7ff);
+    r->coeffs[8 * i + 4] = (uint16_t)((1023 - (int32_t)c4) & 0x7ff);
+    r->coeffs[8 * i + 5] = (uint16_t)((1023 - (int32_t)c5) & 0x7ff);
+    r->coeffs[8 * i + 6] = (uint16_t)((1023 - (int32_t)c6) & 0x7ff);
+    r->coeffs[8 * i + 7] = (uint16_t)((1023 - (int32_t)c7) & 0x7ff);
+  }
+}
+
 static void poly_unpack_13(poly *r, const unsigned char *b)
 {
   for(unsigned int i = 0; i < RRLWR_N / 8; i++) {
@@ -126,14 +152,14 @@ void poly_pack_ciphertext_t_from_acc_msg(unsigned char *ct,
   for(unsigned int i = 0; i < RRLWR_N / 8; i++) {
     unsigned int k = 8 * i;
     uint32_t m = msg[out * RRLWR_N / 8 + i];
-    uint32_t c0 = (3 - (((uint32_t)acc[k + 0] + 2) & 0x7ff) / 256 - ((m & 1) << 2)) & 7;
-    uint32_t c1 = (3 - (((uint32_t)acc[k + 1] + 2) & 0x7ff) / 256 - (((m >> 1) & 1) << 2)) & 7;
-    uint32_t c2 = (3 - (((uint32_t)acc[k + 2] + 2) & 0x7ff) / 256 - (((m >> 2) & 1) << 2)) & 7;
-    uint32_t c3 = (3 - (((uint32_t)acc[k + 3] + 2) & 0x7ff) / 256 - (((m >> 3) & 1) << 2)) & 7;
-    uint32_t c4 = (3 - (((uint32_t)acc[k + 4] + 2) & 0x7ff) / 256 - (((m >> 4) & 1) << 2)) & 7;
-    uint32_t c5 = (3 - (((uint32_t)acc[k + 5] + 2) & 0x7ff) / 256 - (((m >> 5) & 1) << 2)) & 7;
-    uint32_t c6 = (3 - (((uint32_t)acc[k + 6] + 2) & 0x7ff) / 256 - (((m >> 6) & 1) << 2)) & 7;
-    uint32_t c7 = (3 - (((uint32_t)acc[k + 7] + 2) & 0x7ff) / 256 - ((m >> 7) << 2)) & 7;
+    uint32_t c0 = (3 - ((((uint32_t)acc[k + 0] + 2) & 0x7ff) >> 8) - ((m & 1) << 2)) & 7;
+    uint32_t c1 = (3 - ((((uint32_t)acc[k + 1] + 2) & 0x7ff) >> 8) - (((m >> 1) & 1) << 2)) & 7;
+    uint32_t c2 = (3 - ((((uint32_t)acc[k + 2] + 2) & 0x7ff) >> 8) - (((m >> 2) & 1) << 2)) & 7;
+    uint32_t c3 = (3 - ((((uint32_t)acc[k + 3] + 2) & 0x7ff) >> 8) - (((m >> 3) & 1) << 2)) & 7;
+    uint32_t c4 = (3 - ((((uint32_t)acc[k + 4] + 2) & 0x7ff) >> 8) - (((m >> 4) & 1) << 2)) & 7;
+    uint32_t c5 = (3 - ((((uint32_t)acc[k + 5] + 2) & 0x7ff) >> 8) - (((m >> 5) & 1) << 2)) & 7;
+    uint32_t c6 = (3 - ((((uint32_t)acc[k + 6] + 2) & 0x7ff) >> 8) - (((m >> 6) & 1) << 2)) & 7;
+    uint32_t c7 = (3 - ((((uint32_t)acc[k + 7] + 2) & 0x7ff) >> 8) - ((m >> 7) << 2)) & 7;
     unsigned int p = 3 * i;
 
     ct[p + 0] = (unsigned char)(c0 | (c1 << 3) | (c2 << 6));
@@ -271,7 +297,31 @@ void poly_pack(unsigned char *b, poly *r, int32_t bitlen) {
   }
 }
 
+static void ring_pack_11(unsigned char *b, const ring_element *r)
+{
+  for(unsigned int i = 0; i < RRLWR_K; i++) {
+    poly_pack_11(b + i * RRLWR_PKE_PACKED_POLYP_LEN, &r->x[i]);
+  }
+}
+
+static void ring_pack_2(unsigned char *b, const ring_element *r)
+{
+  for(unsigned int i = 0; i < RRLWR_K; i++) {
+    poly_pack_2(b + i * RRLWR_PACKED_POLY2_LEN, &r->x[i]);
+  }
+}
+
 void ring_pack(unsigned char *b, ring_element *r, int32_t bitlen) {
+  if(bitlen == 2) {
+    ring_pack_2(b, r);
+    return;
+  }
+
+  if(bitlen == 11) {
+    ring_pack_11(b, r);
+    return;
+  }
+
   unsigned int offset = bitlen*(RRLWR_N>>3);
   for (unsigned int i = 0; i < RRLWR_K; i++) {
     poly_pack(b+i*offset, &r->x[i], bitlen);
@@ -287,6 +337,11 @@ void poly_unpack(poly *r, const unsigned char *b, int32_t bitlen) {
 
   if(bitlen == 13) {
     poly_unpack_13(r, b);
+    return;
+  }
+
+  if(bitlen == 11) {
+    poly_unpack_11(r, b);
     return;
   }
 
@@ -320,7 +375,19 @@ void poly_unpack(poly *r, const unsigned char *b, int32_t bitlen) {
   }
 }
 
+static void ring_unpack_2(ring_element *r, const unsigned char *b)
+{
+  for(unsigned int i = 0; i < RRLWR_K; i++) {
+    poly_unpack_2(&r->x[i], b + i * RRLWR_PACKED_POLY2_LEN);
+  }
+}
+
 void ring_unpack(ring_element *r, const unsigned char *b, int32_t bitlen) {
+  if(bitlen == 2) {
+    ring_unpack_2(r, b);
+    return;
+  }
+
   unsigned int offset = bitlen*(RRLWR_N>>3);
   for (unsigned int i = 0; i < RRLWR_K; i++) {
     poly_unpack(&r->x[i], b+i*offset, bitlen);

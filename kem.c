@@ -26,6 +26,8 @@ limitations under the License.
 #include "kem.h"
 #include "drng.h"
 
+#include <string.h>
+
 // DRNG_ctx for generating pseudorandom numbers within the KEM scheme
 extern DRNG_ctx drng_algorithm;
 
@@ -65,9 +67,7 @@ int kem_keygen(
   pke_keygen(pk, sk, seedA, seedS);
 
   // Copy the PKE public key to the KEM private key
-  for(unsigned int i = 0; i < RRLWR_PKE_PK_LEN; i++) {
-    sk[RRLWR_PKE_SK_LEN + i] = pk[i];
-  }
+  memcpy(&sk[RRLWR_PKE_SK_LEN], pk, RRLWR_PKE_PK_LEN);
 
   // Hash the PKE public key
   RRLWR_KEM_HASH_F(&sk[RRLWR_PKE_SK_LEN + RRLWR_PKE_PK_LEN], pk, RRLWR_PKE_PK_LEN);
@@ -112,9 +112,7 @@ int kem_enc(
   pke_encrypt(ct, pk, m, seedSp);
 
   // Copy the shared secret to the output
-  for(unsigned int i = 0; i < RRLWR_KEM_SS_LEN; i++) {
-    ss[i] = K[i];
-  }
+  memcpy(ss, K, RRLWR_KEM_SS_LEN);
 
   *ss_len_bytes = RRLWR_KEM_SS_LEN;
   *ct_len_bytes = RRLWR_KEM_CT_LEN;
@@ -144,9 +142,7 @@ int kem_dec(
   }
   
   // Copy H(pk) from the private key
-  for(unsigned int i = 0; i < RRLWR_KEM_HPK_LEN; i++) {
-    hpk_mp[i] = sk[RRLWR_PKE_SK_LEN + RRLWR_PKE_PK_LEN + i];
-  }
+  memcpy(hpk_mp, &sk[RRLWR_PKE_SK_LEN + RRLWR_PKE_PK_LEN], RRLWR_KEM_HPK_LEN);
 
   // Decrypt the message m
   pke_decrypt(mp, ct, sk);
@@ -158,12 +154,10 @@ int kem_dec(
   pke_encrypt(ctp, pk, mp, seedSp);
 
   // Hash (c, z)
-  for(unsigned int i = 0; i < RRLWR_KEM_CT_LEN; i++) {
-    ct_z[i] = ct[i];
-  }
-  for(unsigned int i = 0; i < RRLWR_KEM_SEED_Z_LEN; i++) {
-    z[i] = sk[RRLWR_PKE_SK_LEN + RRLWR_PKE_PK_LEN + RRLWR_KEM_HPK_LEN + i];
-  }
+  memcpy(ct_z, ct, RRLWR_KEM_CT_LEN);
+  memcpy(z,
+         &sk[RRLWR_PKE_SK_LEN + RRLWR_PKE_PK_LEN + RRLWR_KEM_HPK_LEN],
+         RRLWR_KEM_SEED_Z_LEN);
   RRLWR_KEM_HASH_H(Kb, RRLWR_KEM_SS_LEN, ct_z, RRLWR_KEM_CT_LEN + RRLWR_KEM_SEED_Z_LEN);
 
   // Constant-time select either K (ct = ctp) or Kb (ct != ctp) into the shared secret

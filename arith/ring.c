@@ -56,6 +56,22 @@ void ring_to_Awin(ring_element_Awin *aw, const ring_element *a)
   }
 }
 
+void ring_unpack_Awin(ring_element_Awin *aw, const unsigned char *b, int32_t bitlen)
+{
+  unsigned int offset = bitlen * (RRLWR_N >> 3);
+
+  for(unsigned int u = 0; u < RRLWR_K; u++) {
+    poly_unpack(&aw->x[RRLWR_K - 1 - u], b + u * offset, bitlen);
+  }
+
+  for(unsigned int u = 1; u < RRLWR_K; u++) {
+    unsigned int base = RRLWR_K - 1 - u;
+    unsigned int dst = 2 * RRLWR_K - 1 - u;
+
+    poly_mul_x_plus_2(&aw->x[dst], &aw->x[base]);
+  }
+}
+
 void ring_uniform_Awin(ring_element_Awin *aw,
                        int32_t bitlen,
                        const unsigned char *seed,
@@ -84,11 +100,8 @@ void ring_mul_Awin(poly *r,
     int out = i - row_min;
     const poly *row = &a->x[RRLWR_K - 1 - i];
 
-    for(unsigned int k = 0; k < RRLWR_N; k++) {
-      acc[k] = 0;
-    }
-
-    for(int j = 0; j < RRLWR_K; j++) {
+    poly_mul_toom4_u16(acc, &row[0], &b->x[0]);
+    for(int j = 1; j < RRLWR_K; j++) {
       poly_macc_toom4_u16(acc, &row[j], &b->x[j]);
     }
 
@@ -111,11 +124,8 @@ void ring_mul_Awin_round_p(poly *r,
     int out = i - row_min;
     const poly *row = &a->x[RRLWR_K - 1 - i];
 
-    for(unsigned int k = 0; k < RRLWR_N; k++) {
-      acc[k] = 0;
-    }
-
-    for(int j = 0; j < RRLWR_K; j++) {
+    poly_mul_toom4_u16(acc, &row[0], &b->x[0]);
+    for(int j = 1; j < RRLWR_K; j++) {
       poly_macc_toom4_u16(acc, &row[j], &b->x[j]);
     }
 
@@ -137,11 +147,8 @@ void ring_mul_Awin_add_msg_pack_t(unsigned char *ct,
     unsigned int out = (unsigned int)(i - row_min);
     const poly *row = &a->x[RRLWR_K - 1 - i];
 
-    for(unsigned int k = 0; k < RRLWR_N; k++) {
-      acc[k] = 0;
-    }
-
-    for(int j = 0; j < RRLWR_K; j++) {
+    poly_mul_toom4_u16(acc, &row[0], &b->x[0]);
+    for(int j = 1; j < RRLWR_K; j++) {
       poly_macc_toom4_u16(acc, &row[j], &b->x[j]);
     }
 
@@ -164,11 +171,8 @@ void ring_mul_Awin_sub_cm_pack_msg(unsigned char *m,
     unsigned int out = (unsigned int)(i - row_min);
     const poly *row = &a->x[RRLWR_K - 1 - i];
 
-    for(unsigned int k = 0; k < RRLWR_N; k++) {
-      acc[k] = 0;
-    }
-
-    for(int j = 0; j < RRLWR_K; j++) {
+    poly_mul_toom4_u16(acc, &row[0], &b->x[0]);
+    for(int j = 1; j < RRLWR_K; j++) {
       poly_macc_toom4_u16(acc, &row[j], &b->x[j]);
     }
 

@@ -213,11 +213,16 @@ void poly_macc_toom4_u16(uint16_t r[RRLWR_N], const poly *f, const poly *g)
   toom4_128_fold_u16(f->coeffs, g->coeffs, r, 0);
 }
 
+void poly_mul_toom4_u16(uint16_t r[RRLWR_N], const poly *f, const poly *g)
+{
+  toom4_128_fold_u16(f->coeffs, g->coeffs, r, 1);
+}
+
 void poly_mul_toom4(poly *r, const poly *f, const poly *g)
 {
   uint16_t folded[TOOM4_N];
 
-  toom4_128_fold_u16(f->coeffs, g->coeffs, folded, 1);
+  poly_mul_toom4_u16(folded, f, g);
 
   for(unsigned int i = 0; i < RRLWR_N; i++) {
     r->coeffs[i] = folded[i];
