@@ -16,8 +16,57 @@
 
 #include "packing.h"
 
+static void poly_pack_2(unsigned char *b, const poly *r)
+{
+  for(unsigned int i = 0; i < RRLWR_N / 4; i++) {
+    uint32_t c0 = (1 - r->coeffs[4 * i + 0]) & 0x3;
+    uint32_t c1 = (1 - r->coeffs[4 * i + 1]) & 0x3;
+    uint32_t c2 = (1 - r->coeffs[4 * i + 2]) & 0x3;
+    uint32_t c3 = (1 - r->coeffs[4 * i + 3]) & 0x3;
+
+    b[i] = (unsigned char)(c0 | (c1 << 2) | (c2 << 4) | (c3 << 6));
+  }
+}
+
+static void poly_pack_11(unsigned char *b, const poly *r)
+{
+  for(unsigned int i = 0; i < RRLWR_N / 8; i++) {
+    uint32_t c0 = (1023 - r->coeffs[8 * i + 0]) & 0x7ff;
+    uint32_t c1 = (1023 - r->coeffs[8 * i + 1]) & 0x7ff;
+    uint32_t c2 = (1023 - r->coeffs[8 * i + 2]) & 0x7ff;
+    uint32_t c3 = (1023 - r->coeffs[8 * i + 3]) & 0x7ff;
+    uint32_t c4 = (1023 - r->coeffs[8 * i + 4]) & 0x7ff;
+    uint32_t c5 = (1023 - r->coeffs[8 * i + 5]) & 0x7ff;
+    uint32_t c6 = (1023 - r->coeffs[8 * i + 6]) & 0x7ff;
+    uint32_t c7 = (1023 - r->coeffs[8 * i + 7]) & 0x7ff;
+    unsigned int p = 11 * i;
+
+    b[p + 0] = (unsigned char)c0;
+    b[p + 1] = (unsigned char)((c0 >> 8) | (c1 << 3));
+    b[p + 2] = (unsigned char)((c1 >> 5) | (c2 << 6));
+    b[p + 3] = (unsigned char)(c2 >> 2);
+    b[p + 4] = (unsigned char)((c2 >> 10) | (c3 << 1));
+    b[p + 5] = (unsigned char)((c3 >> 7) | (c4 << 4));
+    b[p + 6] = (unsigned char)((c4 >> 4) | (c5 << 7));
+    b[p + 7] = (unsigned char)(c5 >> 1);
+    b[p + 8] = (unsigned char)((c5 >> 9) | (c6 << 2));
+    b[p + 9] = (unsigned char)((c6 >> 6) | (c7 << 5));
+    b[p + 10] = (unsigned char)(c7 >> 3);
+  }
+}
+
 /// @brief Pack a polynomial with coefficients in [-bitlen/2, bitlen/2-1] into a byte string of bitlen bits per coefficient
 void poly_pack(unsigned char *b, poly *r, int32_t bitlen) {
+  if(bitlen == 2) {
+    poly_pack_2(b, r);
+    return;
+  }
+
+  if(bitlen == 11) {
+    poly_pack_11(b, r);
+    return;
+  }
+
   unsigned int i;
   unsigned int acc_shift = 0; 
   unsigned int bpos = 0;

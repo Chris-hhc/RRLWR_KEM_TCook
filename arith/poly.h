@@ -28,6 +28,7 @@ extern "C"
     int16_t coeffs[RRLWR_N];
   } poly;
 
+  void poly_macc_toom4_u16(uint16_t r[RRLWR_N], const poly *f, const poly *g);
   void poly_mul_toom4(poly *r, const poly *f, const poly *g);
   void poly_mul_schoolbook(poly *r, const poly *f, const poly *g);
   void poly_add(poly *r, poly *f, poly *g);

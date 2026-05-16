@@ -27,20 +27,6 @@ static int16_t reduce_mod_q(int32_t x)
   return (int16_t)x;
 }
 
-static void poly_zero(poly *r)
-{
-  for(unsigned int i = 0; i < RRLWR_N; i++) {
-    r->coeffs[i] = 0;
-  }
-}
-
-static void poly_accumulate(poly *r, const poly *f)
-{
-  for(unsigned int i = 0; i < RRLWR_N; i++) {
-    r->coeffs[i] = reduce_mod_q((int32_t)r->coeffs[i] + f->coeffs[i]);
-  }
-}
-
 static void poly_mul_x_plus_2(poly *r, const poly *f)
 {
   int32_t prev = f->coeffs[RRLWR_N - 1];
@@ -70,19 +56,10 @@ void ring_uniform_Awin(ring_element_Awin *aw,
                        const unsigned char *seed,
                        int32_t seed_len)
 {
-  poly a;
+  ring_element a;
 
-  for(unsigned int u = 0; u < RRLWR_K; u++) {
-    poly_uniform(&a, bitlen, seed, seed_len, (unsigned char)u);
-    aw->x[RRLWR_K - 1 - u] = a;
-  }
-
-  for(unsigned int u = 1; u < RRLWR_K; u++) {
-    unsigned int base = RRLWR_K - 1 - u;
-    unsigned int dst = 2 * RRLWR_K - 1 - u;
-
-    poly_mul_x_plus_2(&aw->x[dst], &aw->x[base]);
-  }
+  ring_uniform(&a, bitlen, seed, seed_len);
+  ring_to_Awin(aw, &a);
 }
 
 /// @brief Ring multiplication over R_q using precomputed A-window rows.
@@ -92,17 +69,22 @@ void ring_mul_Awin(poly *r,
                    int ncoeffs)
 {
   int row_min = RRLWR_K - ncoeffs;
-  poly t;
+  uint16_t acc[RRLWR_N];
 
   for(int i = RRLWR_K - 1; i >= row_min; i--) {
     int out = i - row_min;
     const poly *row = &a->x[RRLWR_K - 1 - i];
 
-    poly_zero(&r[out]);
+    for(unsigned int k = 0; k < RRLWR_N; k++) {
+      acc[k] = 0;
+    }
 
     for(int j = 0; j < RRLWR_K; j++) {
-      poly_mul_toom4(&t, &row[j], &b->x[j]);
-      poly_accumulate(&r[out], &t);
+      poly_macc_toom4_u16(acc, &row[j], &b->x[j]);
+    }
+
+    for(unsigned int k = 0; k < RRLWR_N; k++) {
+      r[out].coeffs[k] = reduce_mod_q((int32_t)acc[k]);
     }
   }
 }

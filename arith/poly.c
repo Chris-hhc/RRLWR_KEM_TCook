@@ -118,7 +118,8 @@ static void karatsuba32_simple_u16(const uint16_t *a,
 
 static void toom4_128_fold_u16(const int16_t a[TOOM4_N],
                                const int16_t b[TOOM4_N],
-                               uint16_t r[TOOM4_N])
+                               uint16_t r[TOOM4_N],
+                               int clear)
 {
   const uint16_t inv3 = 43691;
   const uint16_t inv9 = 36409;
@@ -130,7 +131,9 @@ static void toom4_128_fold_u16(const int16_t a[TOOM4_N],
   uint16_t w1[TOOM4_RES], w2[TOOM4_RES], w3[TOOM4_RES], w4[TOOM4_RES];
   uint16_t w5[TOOM4_RES], w6[TOOM4_RES], w7[TOOM4_RES];
 
-  memset(r, 0, TOOM4_N * sizeof(uint16_t));
+  if(clear) {
+    memset(r, 0, TOOM4_N * sizeof(uint16_t));
+  }
 
   for(unsigned int j = 0; j < TOOM4_BLK; j++) {
     uint16_t r0 = (uint16_t)a[j];
@@ -215,11 +218,16 @@ static void toom4_128_fold_u16(const int16_t a[TOOM4_N],
   }
 }
 
+void poly_macc_toom4_u16(uint16_t r[RRLWR_N], const poly *f, const poly *g)
+{
+  toom4_128_fold_u16(f->coeffs, g->coeffs, r, 0);
+}
+
 void poly_mul_toom4(poly *r, const poly *f, const poly *g)
 {
   uint16_t folded[TOOM4_N];
 
-  toom4_128_fold_u16(f->coeffs, g->coeffs, folded);
+  toom4_128_fold_u16(f->coeffs, g->coeffs, folded, 1);
 
   for(unsigned int i = 0; i < RRLWR_N; i++) {
     r->coeffs[i] = reduce_mod_q((int32_t)folded[i]);
