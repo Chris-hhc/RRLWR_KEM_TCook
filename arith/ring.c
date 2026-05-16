@@ -56,10 +56,14 @@ void ring_uniform_Awin(ring_element_Awin *aw,
                        const unsigned char *seed,
                        int32_t seed_len)
 {
-  ring_element a;
+  ring_uniform_Awin_base(aw, bitlen, seed, seed_len);
 
-  ring_uniform(&a, bitlen, seed, seed_len);
-  ring_to_Awin(aw, &a);
+  for(unsigned int u = 1; u < RRLWR_K; u++) {
+    unsigned int base = RRLWR_K - 1 - u;
+    unsigned int dst = 2 * RRLWR_K - 1 - u;
+
+    poly_mul_x_plus_2(&aw->x[dst], &aw->x[base]);
+  }
 }
 
 /// @brief Ring multiplication over R_q using precomputed A-window rows.

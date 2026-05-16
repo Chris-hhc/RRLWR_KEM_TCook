@@ -129,3 +129,22 @@ void ring_uniform(ring_element *r, int32_t bitlen, const unsigned char *seed, in
 #error "RRLWR_K must be 5, 9, or 17"
 #endif
 }
+
+void ring_uniform_Awin_base(ring_element_Awin *aw, int32_t bitlen, const unsigned char *seed, int32_t seed_len) {
+#if (RRLWR_K == 5)
+  poly_uniform_5x(&aw->x[4], &aw->x[3], &aw->x[2], &aw->x[1], &aw->x[0],
+                  bitlen, seed, seed_len, 0, 1, 2, 3);
+#elif (RRLWR_K == 9)
+  poly_uniform_9x(&aw->x[8], &aw->x[7], &aw->x[6], &aw->x[5], &aw->x[4],
+                  &aw->x[3], &aw->x[2], &aw->x[1], &aw->x[0],
+                  bitlen, seed, seed_len, 0, 1, 2, 3);
+#elif (RRLWR_K == 17)
+  poly_uniform_17x(&aw->x[16], &aw->x[15], &aw->x[14], &aw->x[13], &aw->x[12],
+                   &aw->x[11], &aw->x[10], &aw->x[9], &aw->x[8], &aw->x[7],
+                   &aw->x[6], &aw->x[5], &aw->x[4], &aw->x[3],
+                   &aw->x[2], &aw->x[1], &aw->x[0],
+                   bitlen, seed, seed_len, 0, 1, 2, 3);
+#else
+#error "RRLWR_K must be 5, 9, or 17"
+#endif
+}
