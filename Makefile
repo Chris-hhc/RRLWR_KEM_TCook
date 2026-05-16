@@ -23,6 +23,9 @@ test: \
   test/unit_tests_KEM128 \
   test/unit_tests_KEM256 \
   test/unit_tests_KEM512 \
+  test/test_poly_mul128 \
+  test/test_poly_mul256 \
+  test/test_poly_mul512 \
 
 speed: \
   test/test_speed_KEM128 \
@@ -52,6 +55,15 @@ test/unit_tests_KEM256: $(SOURCES) $(HEADERS) $(UTILS_FOLDER)/drng.c $(UTILS_FOL
 test/unit_tests_KEM512: $(SOURCES) $(HEADERS) $(UTILS_FOLDER)/drng.c $(UTILS_FOLDER)/drng.h test/unit_tests_KEM.c
 	$(CC) -I$(BASE_FOLDER) -I$(UTILS_FOLDER) -I$(ARITH_FOLDER) -DRRLWR_SECURITY_LEVEL=512 $(CFLAGS) $(SOURCES) $(UTILS_FOLDER)/drng.c test/unit_tests_KEM.c -o $@
 
+test/test_poly_mul128: $(ARITH_FOLDER)/poly.c $(ARITH_FOLDER)/poly.h parameters.h test/test_poly_mul.c
+	$(CC) -I$(BASE_FOLDER) -I$(UTILS_FOLDER) -I$(ARITH_FOLDER) -DRRLWR_SECURITY_LEVEL=128 $(CFLAGS) $(ARITH_FOLDER)/poly.c test/test_poly_mul.c -o $@
+
+test/test_poly_mul256: $(ARITH_FOLDER)/poly.c $(ARITH_FOLDER)/poly.h parameters.h test/test_poly_mul.c
+	$(CC) -I$(BASE_FOLDER) -I$(UTILS_FOLDER) -I$(ARITH_FOLDER) -DRRLWR_SECURITY_LEVEL=256 $(CFLAGS) $(ARITH_FOLDER)/poly.c test/test_poly_mul.c -o $@
+
+test/test_poly_mul512: $(ARITH_FOLDER)/poly.c $(ARITH_FOLDER)/poly.h parameters.h test/test_poly_mul.c
+	$(CC) -I$(BASE_FOLDER) -I$(UTILS_FOLDER) -I$(ARITH_FOLDER) -DRRLWR_SECURITY_LEVEL=512 $(CFLAGS) $(ARITH_FOLDER)/poly.c test/test_poly_mul.c -o $@
+
 test/test_speed_KEM128: $(SOURCES) $(HEADERS) test/cpucycles.h test/cpucycles.c test/speed_print.c test/speed_print.h $(UTILS_FOLDER)/drng.c $(UTILS_FOLDER)/drng.h test/test_speed_KEM.c
 	$(CC) -I$(BASE_FOLDER) -I$(UTILS_FOLDER) -I$(ARITH_FOLDER) -DRRLWR_SECURITY_LEVEL=128 $(CFLAGS) $(SOURCES) $(UTILS_FOLDER)/drng.c test/cpucycles.c test/speed_print.c test/test_speed_KEM.c -o $@
 
@@ -77,6 +89,9 @@ clean:
 	-$(RM) -f test/unit_tests_KEM128
 	-$(RM) -f test/unit_tests_KEM256
 	-$(RM) -f test/unit_tests_KEM512
+	-$(RM) -f test/test_poly_mul128
+	-$(RM) -f test/test_poly_mul256
+	-$(RM) -f test/test_poly_mul512
 	-$(RM) -f test/test_speed_KEM128
 	-$(RM) -f test/test_speed_KEM256
 	-$(RM) -f test/test_speed_KEM512
