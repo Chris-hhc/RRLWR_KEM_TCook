@@ -40,11 +40,11 @@ Commands:
 
 | Stage | RRLWR-128 (median cycles) | Kyber512 (median cycles) | Faster |
 | --- | ---: | ---: | --- |
-| PKE keygen | 87,140 | **84,023** | RRLWR-128 |
+| PKE keygen | 87,140 | **84,023** | Kyber512 |
 | PKE encrypt | **105,555** | 111,851 | RRLWR-128 |
 | PKE decrypt | **20,645** | 37,984 | RRLWR-128 |
 | KEM keygen | 108,115 | **99,434** | Kyber512 |
-| KEM encaps | **119,382** | 123,198 | Kyber512 |
+| KEM encaps | **119,382** | 123,198 | RRLWR-128 |
 | KEM decaps | **136,771** | 161,816 | RRLWR-128 |
 
 ## RRLWR-256 vs Kyber1024
