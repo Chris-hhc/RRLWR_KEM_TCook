@@ -40,12 +40,12 @@ Commands:
 
 | Stage | RRLWR-128 (median cycles) | Kyber512 (median cycles) | Faster |
 | --- | ---: | ---: | --- |
-| PKE keygen | **81,053** | 84,023 | RRLWR-128 |
-| PKE encrypt | **99,268** | 111,851 | RRLWR-128 |
-| PKE decrypt | **18,441** | 37,984 | RRLWR-128 |
-| KEM keygen | 101,715 | **99,434** | Kyber512 |
-| KEM encaps | **112,894** | 123,198 | RRLWR-128 |
-| KEM decaps | **128,202** | 161,816 | RRLWR-128 |
+| PKE keygen | **80,267** | 84,023 | RRLWR-128 |
+| PKE encrypt | **97,328** | 111,851 | RRLWR-128 |
+| PKE decrypt | **17,489** | 37,984 | RRLWR-128 |
+| KEM keygen | 102,161 | **99,434** | Kyber512 |
+| KEM encaps | **110,618** | 123,198 | RRLWR-128 |
+| KEM decaps | **126,699** | 161,816 | RRLWR-128 |
 
 ## RRLWR-256 vs Kyber1024
 
@@ -59,12 +59,12 @@ Commands:
 
 | Stage | RRLWR-256 (median cycles) | Kyber1024 (median cycles) | Faster |
 | --- | ---: | ---: | --- |
-| PKE keygen | 236,692 | **218,874** | Kyber1024 |
-| PKE encrypt | 286,728 | **268,328** | Kyber1024 |
-| PKE decrypt | **58,724** | 63,355 | RRLWR-256 |
-| KEM keygen | **265,001** | 265,411 | RRLWR-256 |
-| KEM encaps | 307,676 | **287,059** | Kyber1024 |
-| KEM decaps | 365,311 | **353,471** | Kyber1024 |
+| PKE keygen | 219,476 | **218,874** | Kyber1024 |
+| PKE encrypt | 272,207 | **268,328** | Kyber1024 |
+| PKE decrypt | **52,870** | 63,355 | RRLWR-256 |
+| KEM keygen | **249,103** | 265,411 | RRLWR-256 |
+| KEM encaps | 293,646 | **287,059** | Kyber1024 |
+| KEM decaps | **343,752** | 353,471 | RRLWR-256 |
 
 ## RRLWR-512 Standalone
 
@@ -76,15 +76,15 @@ Command:
 
 | Stage | Median cycles |
 | --- | ---: |
-| poly_mul_toom4 | 2,469 |
-| ring_mul full | 678,939 |
-| ring_mul_Awin full | 682,018 |
-| ring_mul 1 coefficient | 42,167 |
-| ring_mul_Awin 1 coefficient | 39,585 |
-| PKE keygen | 768,004 |
-| PKE encrypt | 959,852 |
-| PKE decrypt | 191,204 |
-| KEM keygen | 809,794 |
-| KEM encaps | 978,641 |
-| KEM decaps | 1,191,063 |
+| poly_mul_toom4 | 2,456 |
+| ring_mul full | 685,578 |
+| ring_mul_Awin full | 675,845 |
+| ring_mul 1 coefficient | 42,321 |
+| ring_mul_Awin 1 coefficient | 39,481 |
+| PKE keygen | 737,629 |
+| PKE encrypt | 924,429 |
+| PKE decrypt | 177,968 |
+| KEM keygen | 775,953 |
+| KEM encaps | 947,984 |
+| KEM decaps | 1,138,326 |
 
