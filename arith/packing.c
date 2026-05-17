@@ -19,10 +19,10 @@
 static void poly_pack_2(unsigned char *b, const poly *r)
 {
   for(unsigned int i = 0; i < RRLWR_N / 4; i++) {
-    uint32_t c0 = (1 - r->coeffs[4 * i + 0]) & 0x3;
-    uint32_t c1 = (1 - r->coeffs[4 * i + 1]) & 0x3;
-    uint32_t c2 = (1 - r->coeffs[4 * i + 2]) & 0x3;
-    uint32_t c3 = (1 - r->coeffs[4 * i + 3]) & 0x3;
+    uint16_t c0 = (uint16_t)((1 - r->coeffs[4 * i + 0]) & 0x3);
+    uint16_t c1 = (uint16_t)((1 - r->coeffs[4 * i + 1]) & 0x3);
+    uint16_t c2 = (uint16_t)((1 - r->coeffs[4 * i + 2]) & 0x3);
+    uint16_t c3 = (uint16_t)((1 - r->coeffs[4 * i + 3]) & 0x3);
 
     b[i] = (unsigned char)(c0 | (c1 << 2) | (c2 << 4) | (c3 << 6));
   }
@@ -31,14 +31,14 @@ static void poly_pack_2(unsigned char *b, const poly *r)
 static void poly_pack_11(unsigned char *b, const poly *r)
 {
   for(unsigned int i = 0; i < RRLWR_N / 8; i++) {
-    uint32_t c0 = (1023 - r->coeffs[8 * i + 0]) & 0x7ff;
-    uint32_t c1 = (1023 - r->coeffs[8 * i + 1]) & 0x7ff;
-    uint32_t c2 = (1023 - r->coeffs[8 * i + 2]) & 0x7ff;
-    uint32_t c3 = (1023 - r->coeffs[8 * i + 3]) & 0x7ff;
-    uint32_t c4 = (1023 - r->coeffs[8 * i + 4]) & 0x7ff;
-    uint32_t c5 = (1023 - r->coeffs[8 * i + 5]) & 0x7ff;
-    uint32_t c6 = (1023 - r->coeffs[8 * i + 6]) & 0x7ff;
-    uint32_t c7 = (1023 - r->coeffs[8 * i + 7]) & 0x7ff;
+    uint16_t c0 = (uint16_t)((1023 - r->coeffs[8 * i + 0]) & 0x7ff);
+    uint16_t c1 = (uint16_t)((1023 - r->coeffs[8 * i + 1]) & 0x7ff);
+    uint16_t c2 = (uint16_t)((1023 - r->coeffs[8 * i + 2]) & 0x7ff);
+    uint16_t c3 = (uint16_t)((1023 - r->coeffs[8 * i + 3]) & 0x7ff);
+    uint16_t c4 = (uint16_t)((1023 - r->coeffs[8 * i + 4]) & 0x7ff);
+    uint16_t c5 = (uint16_t)((1023 - r->coeffs[8 * i + 5]) & 0x7ff);
+    uint16_t c6 = (uint16_t)((1023 - r->coeffs[8 * i + 6]) & 0x7ff);
+    uint16_t c7 = (uint16_t)((1023 - r->coeffs[8 * i + 7]) & 0x7ff);
     unsigned int p = 11 * i;
 
     b[p + 0] = (unsigned char)c0;
@@ -57,15 +57,15 @@ static void poly_pack_11(unsigned char *b, const poly *r)
 
 static void poly_unpack_2(poly *r, const unsigned char *b)
 {
-  const uint32_t qmask = RRLWR_PKE_Q - 1;
+  const uint16_t qmask = RRLWR_PKE_Q - 1;
 
   for(unsigned int i = 0; i < RRLWR_N / 4; i++) {
-    uint32_t x = b[i];
+    uint16_t x = b[i];
 
-    r->coeffs[4 * i + 0] = (uint16_t)((1 - (int32_t)(x & 0x3)) & qmask);
-    r->coeffs[4 * i + 1] = (uint16_t)((1 - (int32_t)((x >> 2) & 0x3)) & qmask);
-    r->coeffs[4 * i + 2] = (uint16_t)((1 - (int32_t)((x >> 4) & 0x3)) & qmask);
-    r->coeffs[4 * i + 3] = (uint16_t)((1 - (int32_t)(x >> 6)) & qmask);
+    r->coeffs[4 * i + 0] = (uint16_t)((1 - (x & 0x3)) & qmask);
+    r->coeffs[4 * i + 1] = (uint16_t)((1 - ((x >> 2) & 0x3)) & qmask);
+    r->coeffs[4 * i + 2] = (uint16_t)((1 - ((x >> 4) & 0x3)) & qmask);
+    r->coeffs[4 * i + 3] = (uint16_t)((1 - (x >> 6)) & qmask);
   }
 }
 
@@ -73,25 +73,25 @@ static void poly_unpack_11(poly *r, const unsigned char *b)
 {
   for(unsigned int i = 0; i < RRLWR_N / 8; i++) {
     const unsigned char *p = b + 11 * i;
-    uint32_t c0 = ((uint32_t)p[0] | ((uint32_t)p[1] << 8)) & 0x7ff;
-    uint32_t c1 = (((uint32_t)p[1] >> 3) | ((uint32_t)p[2] << 5)) & 0x7ff;
-    uint32_t c2 = (((uint32_t)p[2] >> 6) | ((uint32_t)p[3] << 2) |
-                   ((uint32_t)p[4] << 10)) & 0x7ff;
-    uint32_t c3 = (((uint32_t)p[4] >> 1) | ((uint32_t)p[5] << 7)) & 0x7ff;
-    uint32_t c4 = (((uint32_t)p[5] >> 4) | ((uint32_t)p[6] << 4)) & 0x7ff;
-    uint32_t c5 = (((uint32_t)p[6] >> 7) | ((uint32_t)p[7] << 1) |
-                   ((uint32_t)p[8] << 9)) & 0x7ff;
-    uint32_t c6 = (((uint32_t)p[8] >> 2) | ((uint32_t)p[9] << 6)) & 0x7ff;
-    uint32_t c7 = (((uint32_t)p[9] >> 5) | ((uint32_t)p[10] << 3)) & 0x7ff;
+    uint16_t c0 = (uint16_t)((p[0] | (p[1] << 8)) & 0x7ff);
+    uint16_t c1 = (uint16_t)(((p[1] >> 3) | (p[2] << 5)) & 0x7ff);
+    uint16_t c2 = (uint16_t)(((p[2] >> 6) | (p[3] << 2) |
+                              (p[4] << 10)) & 0x7ff);
+    uint16_t c3 = (uint16_t)(((p[4] >> 1) | (p[5] << 7)) & 0x7ff);
+    uint16_t c4 = (uint16_t)(((p[5] >> 4) | (p[6] << 4)) & 0x7ff);
+    uint16_t c5 = (uint16_t)(((p[6] >> 7) | (p[7] << 1) |
+                              (p[8] << 9)) & 0x7ff);
+    uint16_t c6 = (uint16_t)(((p[8] >> 2) | (p[9] << 6)) & 0x7ff);
+    uint16_t c7 = (uint16_t)(((p[9] >> 5) | (p[10] << 3)) & 0x7ff);
 
-    r->coeffs[8 * i + 0] = (uint16_t)((1023 - (int32_t)c0) & 0x7ff);
-    r->coeffs[8 * i + 1] = (uint16_t)((1023 - (int32_t)c1) & 0x7ff);
-    r->coeffs[8 * i + 2] = (uint16_t)((1023 - (int32_t)c2) & 0x7ff);
-    r->coeffs[8 * i + 3] = (uint16_t)((1023 - (int32_t)c3) & 0x7ff);
-    r->coeffs[8 * i + 4] = (uint16_t)((1023 - (int32_t)c4) & 0x7ff);
-    r->coeffs[8 * i + 5] = (uint16_t)((1023 - (int32_t)c5) & 0x7ff);
-    r->coeffs[8 * i + 6] = (uint16_t)((1023 - (int32_t)c6) & 0x7ff);
-    r->coeffs[8 * i + 7] = (uint16_t)((1023 - (int32_t)c7) & 0x7ff);
+    r->coeffs[8 * i + 0] = (uint16_t)((1023 - c0) & 0x7ff);
+    r->coeffs[8 * i + 1] = (uint16_t)((1023 - c1) & 0x7ff);
+    r->coeffs[8 * i + 2] = (uint16_t)((1023 - c2) & 0x7ff);
+    r->coeffs[8 * i + 3] = (uint16_t)((1023 - c3) & 0x7ff);
+    r->coeffs[8 * i + 4] = (uint16_t)((1023 - c4) & 0x7ff);
+    r->coeffs[8 * i + 5] = (uint16_t)((1023 - c5) & 0x7ff);
+    r->coeffs[8 * i + 6] = (uint16_t)((1023 - c6) & 0x7ff);
+    r->coeffs[8 * i + 7] = (uint16_t)((1023 - c7) & 0x7ff);
   }
 }
 
@@ -99,27 +99,27 @@ static void poly_unpack_13(poly *r, const unsigned char *b)
 {
   for(unsigned int i = 0; i < RRLWR_N / 8; i++) {
     const unsigned char *p = b + 13 * i;
-    uint32_t c0 = ((uint32_t)p[0] | ((uint32_t)p[1] << 8)) & 0x1fff;
-    uint32_t c1 = (((uint32_t)p[1] >> 5) | ((uint32_t)p[2] << 3) |
-                   ((uint32_t)p[3] << 11)) & 0x1fff;
-    uint32_t c2 = (((uint32_t)p[3] >> 2) | ((uint32_t)p[4] << 6)) & 0x1fff;
-    uint32_t c3 = (((uint32_t)p[4] >> 7) | ((uint32_t)p[5] << 1) |
-                   ((uint32_t)p[6] << 9)) & 0x1fff;
-    uint32_t c4 = (((uint32_t)p[6] >> 4) | ((uint32_t)p[7] << 4) |
-                   ((uint32_t)p[8] << 12)) & 0x1fff;
-    uint32_t c5 = (((uint32_t)p[8] >> 1) | ((uint32_t)p[9] << 7)) & 0x1fff;
-    uint32_t c6 = (((uint32_t)p[9] >> 6) | ((uint32_t)p[10] << 2) |
-                   ((uint32_t)p[11] << 10)) & 0x1fff;
-    uint32_t c7 = (((uint32_t)p[11] >> 3) | ((uint32_t)p[12] << 5)) & 0x1fff;
+    uint16_t c0 = (uint16_t)((p[0] | (p[1] << 8)) & 0x1fff);
+    uint16_t c1 = (uint16_t)(((p[1] >> 5) | (p[2] << 3) |
+                              (p[3] << 11)) & 0x1fff);
+    uint16_t c2 = (uint16_t)(((p[3] >> 2) | (p[4] << 6)) & 0x1fff);
+    uint16_t c3 = (uint16_t)(((p[4] >> 7) | (p[5] << 1) |
+                              (p[6] << 9)) & 0x1fff);
+    uint16_t c4 = (uint16_t)(((p[6] >> 4) | (p[7] << 4) |
+                              (p[8] << 12)) & 0x1fff);
+    uint16_t c5 = (uint16_t)(((p[8] >> 1) | (p[9] << 7)) & 0x1fff);
+    uint16_t c6 = (uint16_t)(((p[9] >> 6) | (p[10] << 2) |
+                              (p[11] << 10)) & 0x1fff);
+    uint16_t c7 = (uint16_t)(((p[11] >> 3) | (p[12] << 5)) & 0x1fff);
 
-    r->coeffs[8 * i + 0] = (uint16_t)((4095 - (int32_t)c0) & 0x1fff);
-    r->coeffs[8 * i + 1] = (uint16_t)((4095 - (int32_t)c1) & 0x1fff);
-    r->coeffs[8 * i + 2] = (uint16_t)((4095 - (int32_t)c2) & 0x1fff);
-    r->coeffs[8 * i + 3] = (uint16_t)((4095 - (int32_t)c3) & 0x1fff);
-    r->coeffs[8 * i + 4] = (uint16_t)((4095 - (int32_t)c4) & 0x1fff);
-    r->coeffs[8 * i + 5] = (uint16_t)((4095 - (int32_t)c5) & 0x1fff);
-    r->coeffs[8 * i + 6] = (uint16_t)((4095 - (int32_t)c6) & 0x1fff);
-    r->coeffs[8 * i + 7] = (uint16_t)((4095 - (int32_t)c7) & 0x1fff);
+    r->coeffs[8 * i + 0] = (uint16_t)((4095 - c0) & 0x1fff);
+    r->coeffs[8 * i + 1] = (uint16_t)((4095 - c1) & 0x1fff);
+    r->coeffs[8 * i + 2] = (uint16_t)((4095 - c2) & 0x1fff);
+    r->coeffs[8 * i + 3] = (uint16_t)((4095 - c3) & 0x1fff);
+    r->coeffs[8 * i + 4] = (uint16_t)((4095 - c4) & 0x1fff);
+    r->coeffs[8 * i + 5] = (uint16_t)((4095 - c5) & 0x1fff);
+    r->coeffs[8 * i + 6] = (uint16_t)((4095 - c6) & 0x1fff);
+    r->coeffs[8 * i + 7] = (uint16_t)((4095 - c7) & 0x1fff);
   }
 }
 
@@ -129,15 +129,15 @@ static uint32_t encrypt_t_coeff(uint16_t x,
                                 unsigned int out,
                                 unsigned int k)
 {
-  uint32_t mj = (msg[out * RRLWR_N / 8 + (k >> 3)] >> (k & 0x7)) & 1;
-  uint32_t c = (uint32_t)x;
+  uint16_t mj = (uint16_t)((msg[out * RRLWR_N / 8 + (k >> 3)] >> (k & 0x7)) & 1);
+  uint16_t c = x;
 
-  c = (c + ((uint32_t)1 << (RRLWR_PKE_LOGQ - (RRLWR_PKE_LOGP + 1))) +
-       (-mj & ((uint32_t)1 << (RRLWR_PKE_LOGP - 1)))) &
+  c = (uint16_t)((c + (1 << (RRLWR_PKE_LOGQ - (RRLWR_PKE_LOGP + 1))) +
+       (-mj & (1 << (RRLWR_PKE_LOGP - 1)))) &
       (RRLWR_PKE_P - 1);
-  c >>= RRLWR_PKE_LOGP - RRLWR_PKE_LOGT;
-  c = (((uint32_t)1 << (RRLWR_PKE_LOGT - 1)) - 1 - c) &
-      (((uint32_t)1 << RRLWR_PKE_LOGT) - 1);
+  c = (uint16_t)(c >> (RRLWR_PKE_LOGP - RRLWR_PKE_LOGT));
+  c = (uint16_t)((((1 << (RRLWR_PKE_LOGT - 1)) - 1) - c) &
+      ((1 << RRLWR_PKE_LOGT) - 1));
 
   return c;
 }
@@ -151,15 +151,15 @@ void poly_pack_ciphertext_t_from_acc_msg(unsigned char *ct,
 #if RRLWR_PKE_LOGT == 3
   for(unsigned int i = 0; i < RRLWR_N / 8; i++) {
     unsigned int k = 8 * i;
-    uint32_t m = msg[out * RRLWR_N / 8 + i];
-    uint32_t c0 = (3 - ((((uint32_t)acc[k + 0] + 2) & 0x7ff) >> 8) - ((m & 1) << 2)) & 7;
-    uint32_t c1 = (3 - ((((uint32_t)acc[k + 1] + 2) & 0x7ff) >> 8) - (((m >> 1) & 1) << 2)) & 7;
-    uint32_t c2 = (3 - ((((uint32_t)acc[k + 2] + 2) & 0x7ff) >> 8) - (((m >> 2) & 1) << 2)) & 7;
-    uint32_t c3 = (3 - ((((uint32_t)acc[k + 3] + 2) & 0x7ff) >> 8) - (((m >> 3) & 1) << 2)) & 7;
-    uint32_t c4 = (3 - ((((uint32_t)acc[k + 4] + 2) & 0x7ff) >> 8) - (((m >> 4) & 1) << 2)) & 7;
-    uint32_t c5 = (3 - ((((uint32_t)acc[k + 5] + 2) & 0x7ff) >> 8) - (((m >> 5) & 1) << 2)) & 7;
-    uint32_t c6 = (3 - ((((uint32_t)acc[k + 6] + 2) & 0x7ff) >> 8) - (((m >> 6) & 1) << 2)) & 7;
-    uint32_t c7 = (3 - ((((uint32_t)acc[k + 7] + 2) & 0x7ff) >> 8) - ((m >> 7) << 2)) & 7;
+    uint16_t m = msg[out * RRLWR_N / 8 + i];
+    uint16_t c0 = (uint16_t)((3 - (((acc[k + 0] + 2) & 0x7ff) >> 8) - ((m & 1) << 2)) & 7);
+    uint16_t c1 = (uint16_t)((3 - (((acc[k + 1] + 2) & 0x7ff) >> 8) - (((m >> 1) & 1) << 2)) & 7);
+    uint16_t c2 = (uint16_t)((3 - (((acc[k + 2] + 2) & 0x7ff) >> 8) - (((m >> 2) & 1) << 2)) & 7);
+    uint16_t c3 = (uint16_t)((3 - (((acc[k + 3] + 2) & 0x7ff) >> 8) - (((m >> 3) & 1) << 2)) & 7);
+    uint16_t c4 = (uint16_t)((3 - (((acc[k + 4] + 2) & 0x7ff) >> 8) - (((m >> 4) & 1) << 2)) & 7);
+    uint16_t c5 = (uint16_t)((3 - (((acc[k + 5] + 2) & 0x7ff) >> 8) - (((m >> 5) & 1) << 2)) & 7);
+    uint16_t c6 = (uint16_t)((3 - (((acc[k + 6] + 2) & 0x7ff) >> 8) - (((m >> 6) & 1) << 2)) & 7);
+    uint16_t c7 = (uint16_t)((3 - (((acc[k + 7] + 2) & 0x7ff) >> 8) - ((m >> 7) << 2)) & 7);
     unsigned int p = 3 * i;
 
     ct[p + 0] = (unsigned char)(c0 | (c1 << 3) | (c2 << 6));
@@ -169,16 +169,16 @@ void poly_pack_ciphertext_t_from_acc_msg(unsigned char *ct,
 #elif RRLWR_PKE_LOGT == 8
   for(unsigned int i = 0; i < RRLWR_N / 8; i++) {
     unsigned int k = 8 * i;
-    uint32_t m = msg[out * RRLWR_N / 8 + i];
+    uint16_t m = msg[out * RRLWR_N / 8 + i];
 
-    ct[k + 0] = (unsigned char)((127 - ((((uint32_t)acc[k + 0] + 2) & 0x7ff) >> 3) - ((m & 1) << 7)) & 0xff);
-    ct[k + 1] = (unsigned char)((127 - ((((uint32_t)acc[k + 1] + 2) & 0x7ff) >> 3) - (((m >> 1) & 1) << 7)) & 0xff);
-    ct[k + 2] = (unsigned char)((127 - ((((uint32_t)acc[k + 2] + 2) & 0x7ff) >> 3) - (((m >> 2) & 1) << 7)) & 0xff);
-    ct[k + 3] = (unsigned char)((127 - ((((uint32_t)acc[k + 3] + 2) & 0x7ff) >> 3) - (((m >> 3) & 1) << 7)) & 0xff);
-    ct[k + 4] = (unsigned char)((127 - ((((uint32_t)acc[k + 4] + 2) & 0x7ff) >> 3) - (((m >> 4) & 1) << 7)) & 0xff);
-    ct[k + 5] = (unsigned char)((127 - ((((uint32_t)acc[k + 5] + 2) & 0x7ff) >> 3) - (((m >> 5) & 1) << 7)) & 0xff);
-    ct[k + 6] = (unsigned char)((127 - ((((uint32_t)acc[k + 6] + 2) & 0x7ff) >> 3) - (((m >> 6) & 1) << 7)) & 0xff);
-    ct[k + 7] = (unsigned char)((127 - ((((uint32_t)acc[k + 7] + 2) & 0x7ff) >> 3) - ((m >> 7) << 7)) & 0xff);
+    ct[k + 0] = (unsigned char)((127 - (((acc[k + 0] + 2) & 0x7ff) >> 3) - ((m & 1) << 7)) & 0xff);
+    ct[k + 1] = (unsigned char)((127 - (((acc[k + 1] + 2) & 0x7ff) >> 3) - (((m >> 1) & 1) << 7)) & 0xff);
+    ct[k + 2] = (unsigned char)((127 - (((acc[k + 2] + 2) & 0x7ff) >> 3) - (((m >> 2) & 1) << 7)) & 0xff);
+    ct[k + 3] = (unsigned char)((127 - (((acc[k + 3] + 2) & 0x7ff) >> 3) - (((m >> 3) & 1) << 7)) & 0xff);
+    ct[k + 4] = (unsigned char)((127 - (((acc[k + 4] + 2) & 0x7ff) >> 3) - (((m >> 4) & 1) << 7)) & 0xff);
+    ct[k + 5] = (unsigned char)((127 - (((acc[k + 5] + 2) & 0x7ff) >> 3) - (((m >> 5) & 1) << 7)) & 0xff);
+    ct[k + 6] = (unsigned char)((127 - (((acc[k + 6] + 2) & 0x7ff) >> 3) - (((m >> 6) & 1) << 7)) & 0xff);
+    ct[k + 7] = (unsigned char)((127 - (((acc[k + 7] + 2) & 0x7ff) >> 3) - ((m >> 7) << 7)) & 0xff);
   }
 #else
   unsigned int acc_shift = 0;
@@ -204,22 +204,22 @@ void poly_pack_message_from_acc_cm(unsigned char *m,
 #if RRLWR_PKE_LOGT == 3
   for(unsigned int i = 0; i < RRLWR_N / 8; i++) {
     unsigned int k = 8 * i;
-    uint32_t c0 = cm[3 * i + 0] & 0x7;
-    uint32_t c1 = (cm[3 * i + 0] >> 3) & 0x7;
-    uint32_t c2 = ((cm[3 * i + 0] >> 6) | (cm[3 * i + 1] << 2)) & 0x7;
-    uint32_t c3 = (cm[3 * i + 1] >> 1) & 0x7;
-    uint32_t c4 = (cm[3 * i + 1] >> 4) & 0x7;
-    uint32_t c5 = ((cm[3 * i + 1] >> 7) | (cm[3 * i + 2] << 1)) & 0x7;
-    uint32_t c6 = (cm[3 * i + 2] >> 2) & 0x7;
-    uint32_t c7 = cm[3 * i + 2] >> 5;
-    uint32_t b0 = ((((((uint32_t)acc[k + 0] & 0x7ff) - ((3 - c0) << 8) + 126) & 0x7ff) + 512) >> 10) & 1;
-    uint32_t b1 = ((((((uint32_t)acc[k + 1] & 0x7ff) - ((3 - c1) << 8) + 126) & 0x7ff) + 512) >> 10) & 1;
-    uint32_t b2 = ((((((uint32_t)acc[k + 2] & 0x7ff) - ((3 - c2) << 8) + 126) & 0x7ff) + 512) >> 10) & 1;
-    uint32_t b3 = ((((((uint32_t)acc[k + 3] & 0x7ff) - ((3 - c3) << 8) + 126) & 0x7ff) + 512) >> 10) & 1;
-    uint32_t b4 = ((((((uint32_t)acc[k + 4] & 0x7ff) - ((3 - c4) << 8) + 126) & 0x7ff) + 512) >> 10) & 1;
-    uint32_t b5 = ((((((uint32_t)acc[k + 5] & 0x7ff) - ((3 - c5) << 8) + 126) & 0x7ff) + 512) >> 10) & 1;
-    uint32_t b6 = ((((((uint32_t)acc[k + 6] & 0x7ff) - ((3 - c6) << 8) + 126) & 0x7ff) + 512) >> 10) & 1;
-    uint32_t b7 = ((((((uint32_t)acc[k + 7] & 0x7ff) - ((3 - c7) << 8) + 126) & 0x7ff) + 512) >> 10) & 1;
+    uint16_t c0 = cm[3 * i + 0] & 0x7;
+    uint16_t c1 = (cm[3 * i + 0] >> 3) & 0x7;
+    uint16_t c2 = ((cm[3 * i + 0] >> 6) | (cm[3 * i + 1] << 2)) & 0x7;
+    uint16_t c3 = (cm[3 * i + 1] >> 1) & 0x7;
+    uint16_t c4 = (cm[3 * i + 1] >> 4) & 0x7;
+    uint16_t c5 = ((cm[3 * i + 1] >> 7) | (cm[3 * i + 2] << 1)) & 0x7;
+    uint16_t c6 = (cm[3 * i + 2] >> 2) & 0x7;
+    uint16_t c7 = cm[3 * i + 2] >> 5;
+    uint16_t b0 = (uint16_t)((((((acc[k + 0] & 0x7ff) - ((3 - c0) << 8) + 126) & 0x7ff) + 512) >> 10) & 1);
+    uint16_t b1 = (uint16_t)((((((acc[k + 1] & 0x7ff) - ((3 - c1) << 8) + 126) & 0x7ff) + 512) >> 10) & 1);
+    uint16_t b2 = (uint16_t)((((((acc[k + 2] & 0x7ff) - ((3 - c2) << 8) + 126) & 0x7ff) + 512) >> 10) & 1);
+    uint16_t b3 = (uint16_t)((((((acc[k + 3] & 0x7ff) - ((3 - c3) << 8) + 126) & 0x7ff) + 512) >> 10) & 1);
+    uint16_t b4 = (uint16_t)((((((acc[k + 4] & 0x7ff) - ((3 - c4) << 8) + 126) & 0x7ff) + 512) >> 10) & 1);
+    uint16_t b5 = (uint16_t)((((((acc[k + 5] & 0x7ff) - ((3 - c5) << 8) + 126) & 0x7ff) + 512) >> 10) & 1);
+    uint16_t b6 = (uint16_t)((((((acc[k + 6] & 0x7ff) - ((3 - c6) << 8) + 126) & 0x7ff) + 512) >> 10) & 1);
+    uint16_t b7 = (uint16_t)((((((acc[k + 7] & 0x7ff) - ((3 - c7) << 8) + 126) & 0x7ff) + 512) >> 10) & 1);
 
     m[i] = (unsigned char)(b0 | (b1 << 1) | (b2 << 2) | (b3 << 3) |
                            (b4 << 4) | (b5 << 5) | (b6 << 6) | (b7 << 7));
@@ -227,22 +227,22 @@ void poly_pack_message_from_acc_cm(unsigned char *m,
 #elif RRLWR_PKE_LOGT == 8
   for(unsigned int i = 0; i < RRLWR_N / 8; i++) {
     unsigned int k = 8 * i;
-    uint32_t c0 = cm[k + 0];
-    uint32_t c1 = cm[k + 1];
-    uint32_t c2 = cm[k + 2];
-    uint32_t c3 = cm[k + 3];
-    uint32_t c4 = cm[k + 4];
-    uint32_t c5 = cm[k + 5];
-    uint32_t c6 = cm[k + 6];
-    uint32_t c7 = cm[k + 7];
-    uint32_t b0 = ((((((uint32_t)acc[k + 0] & 0x7ff) - ((127 - c0) << 3) + 2) & 0x7ff) + 512) >> 10) & 1;
-    uint32_t b1 = ((((((uint32_t)acc[k + 1] & 0x7ff) - ((127 - c1) << 3) + 2) & 0x7ff) + 512) >> 10) & 1;
-    uint32_t b2 = ((((((uint32_t)acc[k + 2] & 0x7ff) - ((127 - c2) << 3) + 2) & 0x7ff) + 512) >> 10) & 1;
-    uint32_t b3 = ((((((uint32_t)acc[k + 3] & 0x7ff) - ((127 - c3) << 3) + 2) & 0x7ff) + 512) >> 10) & 1;
-    uint32_t b4 = ((((((uint32_t)acc[k + 4] & 0x7ff) - ((127 - c4) << 3) + 2) & 0x7ff) + 512) >> 10) & 1;
-    uint32_t b5 = ((((((uint32_t)acc[k + 5] & 0x7ff) - ((127 - c5) << 3) + 2) & 0x7ff) + 512) >> 10) & 1;
-    uint32_t b6 = ((((((uint32_t)acc[k + 6] & 0x7ff) - ((127 - c6) << 3) + 2) & 0x7ff) + 512) >> 10) & 1;
-    uint32_t b7 = ((((((uint32_t)acc[k + 7] & 0x7ff) - ((127 - c7) << 3) + 2) & 0x7ff) + 512) >> 10) & 1;
+    uint16_t c0 = cm[k + 0];
+    uint16_t c1 = cm[k + 1];
+    uint16_t c2 = cm[k + 2];
+    uint16_t c3 = cm[k + 3];
+    uint16_t c4 = cm[k + 4];
+    uint16_t c5 = cm[k + 5];
+    uint16_t c6 = cm[k + 6];
+    uint16_t c7 = cm[k + 7];
+    uint16_t b0 = (uint16_t)((((((acc[k + 0] & 0x7ff) - ((127 - c0) << 3) + 2) & 0x7ff) + 512) >> 10) & 1);
+    uint16_t b1 = (uint16_t)((((((acc[k + 1] & 0x7ff) - ((127 - c1) << 3) + 2) & 0x7ff) + 512) >> 10) & 1);
+    uint16_t b2 = (uint16_t)((((((acc[k + 2] & 0x7ff) - ((127 - c2) << 3) + 2) & 0x7ff) + 512) >> 10) & 1);
+    uint16_t b3 = (uint16_t)((((((acc[k + 3] & 0x7ff) - ((127 - c3) << 3) + 2) & 0x7ff) + 512) >> 10) & 1);
+    uint16_t b4 = (uint16_t)((((((acc[k + 4] & 0x7ff) - ((127 - c4) << 3) + 2) & 0x7ff) + 512) >> 10) & 1);
+    uint16_t b5 = (uint16_t)((((((acc[k + 5] & 0x7ff) - ((127 - c5) << 3) + 2) & 0x7ff) + 512) >> 10) & 1);
+    uint16_t b6 = (uint16_t)((((((acc[k + 6] & 0x7ff) - ((127 - c6) << 3) + 2) & 0x7ff) + 512) >> 10) & 1);
+    uint16_t b7 = (uint16_t)((((((acc[k + 7] & 0x7ff) - ((127 - c7) << 3) + 2) & 0x7ff) + 512) >> 10) & 1);
 
     m[i] = (unsigned char)(b0 | (b1 << 1) | (b2 << 2) | (b3 << 3) |
                            (b4 << 4) | (b5 << 5) | (b6 << 6) | (b7 << 7));
