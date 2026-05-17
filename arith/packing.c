@@ -16,13 +16,31 @@
 
 #include "packing.h"
 
+#ifndef RRLWR_PACKING_16BIT_SCALAR
+#define RRLWR_PACKING_16BIT_SCALAR 0
+#endif
+
+#if RRLWR_PACKING_16BIT_SCALAR
+typedef uint16_t pack_scalar_t;
+#define PACK_SCALAR(x) ((uint16_t)(x))
+#define PACK_ACC(x) (x)
+#define PACK_SIGNED(x) (x)
+#define PACK_BYTE(x) (x)
+#else
+typedef uint32_t pack_scalar_t;
+#define PACK_SCALAR(x) ((uint32_t)(x))
+#define PACK_ACC(x) ((uint32_t)(x))
+#define PACK_SIGNED(x) ((int32_t)(x))
+#define PACK_BYTE(x) ((uint32_t)(x))
+#endif
+
 static void poly_pack_2(unsigned char *b, const poly *r)
 {
   for(unsigned int i = 0; i < RRLWR_N / 4; i++) {
-    uint32_t c0 = (1 - r->coeffs[4 * i + 0]) & 0x3;
-    uint32_t c1 = (1 - r->coeffs[4 * i + 1]) & 0x3;
-    uint32_t c2 = (1 - r->coeffs[4 * i + 2]) & 0x3;
-    uint32_t c3 = (1 - r->coeffs[4 * i + 3]) & 0x3;
+    pack_scalar_t c0 = PACK_SCALAR((1 - r->coeffs[4 * i + 0]) & 0x3);
+    pack_scalar_t c1 = PACK_SCALAR((1 - r->coeffs[4 * i + 1]) & 0x3);
+    pack_scalar_t c2 = PACK_SCALAR((1 - r->coeffs[4 * i + 2]) & 0x3);
+    pack_scalar_t c3 = PACK_SCALAR((1 - r->coeffs[4 * i + 3]) & 0x3);
 
     b[i] = (unsigned char)(c0 | (c1 << 2) | (c2 << 4) | (c3 << 6));
   }
@@ -31,14 +49,14 @@ static void poly_pack_2(unsigned char *b, const poly *r)
 static void poly_pack_11(unsigned char *b, const poly *r)
 {
   for(unsigned int i = 0; i < RRLWR_N / 8; i++) {
-    uint32_t c0 = (1023 - r->coeffs[8 * i + 0]) & 0x7ff;
-    uint32_t c1 = (1023 - r->coeffs[8 * i + 1]) & 0x7ff;
-    uint32_t c2 = (1023 - r->coeffs[8 * i + 2]) & 0x7ff;
-    uint32_t c3 = (1023 - r->coeffs[8 * i + 3]) & 0x7ff;
-    uint32_t c4 = (1023 - r->coeffs[8 * i + 4]) & 0x7ff;
-    uint32_t c5 = (1023 - r->coeffs[8 * i + 5]) & 0x7ff;
-    uint32_t c6 = (1023 - r->coeffs[8 * i + 6]) & 0x7ff;
-    uint32_t c7 = (1023 - r->coeffs[8 * i + 7]) & 0x7ff;
+    pack_scalar_t c0 = PACK_SCALAR((1023 - r->coeffs[8 * i + 0]) & 0x7ff);
+    pack_scalar_t c1 = PACK_SCALAR((1023 - r->coeffs[8 * i + 1]) & 0x7ff);
+    pack_scalar_t c2 = PACK_SCALAR((1023 - r->coeffs[8 * i + 2]) & 0x7ff);
+    pack_scalar_t c3 = PACK_SCALAR((1023 - r->coeffs[8 * i + 3]) & 0x7ff);
+    pack_scalar_t c4 = PACK_SCALAR((1023 - r->coeffs[8 * i + 4]) & 0x7ff);
+    pack_scalar_t c5 = PACK_SCALAR((1023 - r->coeffs[8 * i + 5]) & 0x7ff);
+    pack_scalar_t c6 = PACK_SCALAR((1023 - r->coeffs[8 * i + 6]) & 0x7ff);
+    pack_scalar_t c7 = PACK_SCALAR((1023 - r->coeffs[8 * i + 7]) & 0x7ff);
     unsigned int p = 11 * i;
 
     b[p + 0] = (unsigned char)c0;
@@ -58,12 +76,12 @@ static void poly_pack_11(unsigned char *b, const poly *r)
 static void poly_unpack_2(poly *r, const unsigned char *b)
 {
   for(unsigned int i = 0; i < RRLWR_N / 4; i++) {
-    uint32_t x = b[i];
+    pack_scalar_t x = b[i];
 
-    r->coeffs[4 * i + 0] = (int16_t)(1 - (int32_t)(x & 0x3));
-    r->coeffs[4 * i + 1] = (int16_t)(1 - (int32_t)((x >> 2) & 0x3));
-    r->coeffs[4 * i + 2] = (int16_t)(1 - (int32_t)((x >> 4) & 0x3));
-    r->coeffs[4 * i + 3] = (int16_t)(1 - (int32_t)(x >> 6));
+    r->coeffs[4 * i + 0] = (int16_t)(1 - (x & 0x3));
+    r->coeffs[4 * i + 1] = (int16_t)(1 - ((x >> 2) & 0x3));
+    r->coeffs[4 * i + 2] = (int16_t)(1 - ((x >> 4) & 0x3));
+    r->coeffs[4 * i + 3] = (int16_t)(1 - (x >> 6));
   }
 }
 
@@ -71,25 +89,25 @@ static void poly_unpack_11(poly *r, const unsigned char *b)
 {
   for(unsigned int i = 0; i < RRLWR_N / 8; i++) {
     const unsigned char *p = b + 11 * i;
-    uint32_t c0 = ((uint32_t)p[0] | ((uint32_t)p[1] << 8)) & 0x7ff;
-    uint32_t c1 = (((uint32_t)p[1] >> 3) | ((uint32_t)p[2] << 5)) & 0x7ff;
-    uint32_t c2 = (((uint32_t)p[2] >> 6) | ((uint32_t)p[3] << 2) |
-                   ((uint32_t)p[4] << 10)) & 0x7ff;
-    uint32_t c3 = (((uint32_t)p[4] >> 1) | ((uint32_t)p[5] << 7)) & 0x7ff;
-    uint32_t c4 = (((uint32_t)p[5] >> 4) | ((uint32_t)p[6] << 4)) & 0x7ff;
-    uint32_t c5 = (((uint32_t)p[6] >> 7) | ((uint32_t)p[7] << 1) |
-                   ((uint32_t)p[8] << 9)) & 0x7ff;
-    uint32_t c6 = (((uint32_t)p[8] >> 2) | ((uint32_t)p[9] << 6)) & 0x7ff;
-    uint32_t c7 = (((uint32_t)p[9] >> 5) | ((uint32_t)p[10] << 3)) & 0x7ff;
+    pack_scalar_t c0 = PACK_SCALAR((PACK_BYTE(p[0]) | (PACK_BYTE(p[1]) << 8)) & 0x7ff);
+    pack_scalar_t c1 = PACK_SCALAR(((PACK_BYTE(p[1]) >> 3) | (PACK_BYTE(p[2]) << 5)) & 0x7ff);
+    pack_scalar_t c2 = PACK_SCALAR(((PACK_BYTE(p[2]) >> 6) | (PACK_BYTE(p[3]) << 2) |
+                                    (PACK_BYTE(p[4]) << 10)) & 0x7ff);
+    pack_scalar_t c3 = PACK_SCALAR(((PACK_BYTE(p[4]) >> 1) | (PACK_BYTE(p[5]) << 7)) & 0x7ff);
+    pack_scalar_t c4 = PACK_SCALAR(((PACK_BYTE(p[5]) >> 4) | (PACK_BYTE(p[6]) << 4)) & 0x7ff);
+    pack_scalar_t c5 = PACK_SCALAR(((PACK_BYTE(p[6]) >> 7) | (PACK_BYTE(p[7]) << 1) |
+                                    (PACK_BYTE(p[8]) << 9)) & 0x7ff);
+    pack_scalar_t c6 = PACK_SCALAR(((PACK_BYTE(p[8]) >> 2) | (PACK_BYTE(p[9]) << 6)) & 0x7ff);
+    pack_scalar_t c7 = PACK_SCALAR(((PACK_BYTE(p[9]) >> 5) | (PACK_BYTE(p[10]) << 3)) & 0x7ff);
 
-    r->coeffs[8 * i + 0] = (int16_t)(1023 - (int32_t)c0);
-    r->coeffs[8 * i + 1] = (int16_t)(1023 - (int32_t)c1);
-    r->coeffs[8 * i + 2] = (int16_t)(1023 - (int32_t)c2);
-    r->coeffs[8 * i + 3] = (int16_t)(1023 - (int32_t)c3);
-    r->coeffs[8 * i + 4] = (int16_t)(1023 - (int32_t)c4);
-    r->coeffs[8 * i + 5] = (int16_t)(1023 - (int32_t)c5);
-    r->coeffs[8 * i + 6] = (int16_t)(1023 - (int32_t)c6);
-    r->coeffs[8 * i + 7] = (int16_t)(1023 - (int32_t)c7);
+    r->coeffs[8 * i + 0] = (int16_t)(1023 - PACK_SIGNED(c0));
+    r->coeffs[8 * i + 1] = (int16_t)(1023 - PACK_SIGNED(c1));
+    r->coeffs[8 * i + 2] = (int16_t)(1023 - PACK_SIGNED(c2));
+    r->coeffs[8 * i + 3] = (int16_t)(1023 - PACK_SIGNED(c3));
+    r->coeffs[8 * i + 4] = (int16_t)(1023 - PACK_SIGNED(c4));
+    r->coeffs[8 * i + 5] = (int16_t)(1023 - PACK_SIGNED(c5));
+    r->coeffs[8 * i + 6] = (int16_t)(1023 - PACK_SIGNED(c6));
+    r->coeffs[8 * i + 7] = (int16_t)(1023 - PACK_SIGNED(c7));
   }
 }
 
@@ -97,27 +115,27 @@ static void poly_unpack_13(poly *r, const unsigned char *b)
 {
   for(unsigned int i = 0; i < RRLWR_N / 8; i++) {
     const unsigned char *p = b + 13 * i;
-    uint32_t c0 = ((uint32_t)p[0] | ((uint32_t)p[1] << 8)) & 0x1fff;
-    uint32_t c1 = (((uint32_t)p[1] >> 5) | ((uint32_t)p[2] << 3) |
-                   ((uint32_t)p[3] << 11)) & 0x1fff;
-    uint32_t c2 = (((uint32_t)p[3] >> 2) | ((uint32_t)p[4] << 6)) & 0x1fff;
-    uint32_t c3 = (((uint32_t)p[4] >> 7) | ((uint32_t)p[5] << 1) |
-                   ((uint32_t)p[6] << 9)) & 0x1fff;
-    uint32_t c4 = (((uint32_t)p[6] >> 4) | ((uint32_t)p[7] << 4) |
-                   ((uint32_t)p[8] << 12)) & 0x1fff;
-    uint32_t c5 = (((uint32_t)p[8] >> 1) | ((uint32_t)p[9] << 7)) & 0x1fff;
-    uint32_t c6 = (((uint32_t)p[9] >> 6) | ((uint32_t)p[10] << 2) |
-                   ((uint32_t)p[11] << 10)) & 0x1fff;
-    uint32_t c7 = (((uint32_t)p[11] >> 3) | ((uint32_t)p[12] << 5)) & 0x1fff;
+    pack_scalar_t c0 = PACK_SCALAR((PACK_BYTE(p[0]) | (PACK_BYTE(p[1]) << 8)) & 0x1fff);
+    pack_scalar_t c1 = PACK_SCALAR(((PACK_BYTE(p[1]) >> 5) | (PACK_BYTE(p[2]) << 3) |
+                                    (PACK_BYTE(p[3]) << 11)) & 0x1fff);
+    pack_scalar_t c2 = PACK_SCALAR(((PACK_BYTE(p[3]) >> 2) | (PACK_BYTE(p[4]) << 6)) & 0x1fff);
+    pack_scalar_t c3 = PACK_SCALAR(((PACK_BYTE(p[4]) >> 7) | (PACK_BYTE(p[5]) << 1) |
+                                    (PACK_BYTE(p[6]) << 9)) & 0x1fff);
+    pack_scalar_t c4 = PACK_SCALAR(((PACK_BYTE(p[6]) >> 4) | (PACK_BYTE(p[7]) << 4) |
+                                    (PACK_BYTE(p[8]) << 12)) & 0x1fff);
+    pack_scalar_t c5 = PACK_SCALAR(((PACK_BYTE(p[8]) >> 1) | (PACK_BYTE(p[9]) << 7)) & 0x1fff);
+    pack_scalar_t c6 = PACK_SCALAR(((PACK_BYTE(p[9]) >> 6) | (PACK_BYTE(p[10]) << 2) |
+                                    (PACK_BYTE(p[11]) << 10)) & 0x1fff);
+    pack_scalar_t c7 = PACK_SCALAR(((PACK_BYTE(p[11]) >> 3) | (PACK_BYTE(p[12]) << 5)) & 0x1fff);
 
-    r->coeffs[8 * i + 0] = (int16_t)(4095 - (int32_t)c0);
-    r->coeffs[8 * i + 1] = (int16_t)(4095 - (int32_t)c1);
-    r->coeffs[8 * i + 2] = (int16_t)(4095 - (int32_t)c2);
-    r->coeffs[8 * i + 3] = (int16_t)(4095 - (int32_t)c3);
-    r->coeffs[8 * i + 4] = (int16_t)(4095 - (int32_t)c4);
-    r->coeffs[8 * i + 5] = (int16_t)(4095 - (int32_t)c5);
-    r->coeffs[8 * i + 6] = (int16_t)(4095 - (int32_t)c6);
-    r->coeffs[8 * i + 7] = (int16_t)(4095 - (int32_t)c7);
+    r->coeffs[8 * i + 0] = (int16_t)(4095 - PACK_SIGNED(c0));
+    r->coeffs[8 * i + 1] = (int16_t)(4095 - PACK_SIGNED(c1));
+    r->coeffs[8 * i + 2] = (int16_t)(4095 - PACK_SIGNED(c2));
+    r->coeffs[8 * i + 3] = (int16_t)(4095 - PACK_SIGNED(c3));
+    r->coeffs[8 * i + 4] = (int16_t)(4095 - PACK_SIGNED(c4));
+    r->coeffs[8 * i + 5] = (int16_t)(4095 - PACK_SIGNED(c5));
+    r->coeffs[8 * i + 6] = (int16_t)(4095 - PACK_SIGNED(c6));
+    r->coeffs[8 * i + 7] = (int16_t)(4095 - PACK_SIGNED(c7));
   }
 }
 
@@ -149,15 +167,15 @@ void poly_pack_ciphertext_t_from_acc_msg(unsigned char *ct,
 #if RRLWR_PKE_LOGT == 3
   for(unsigned int i = 0; i < RRLWR_N / 8; i++) {
     unsigned int k = 8 * i;
-    uint32_t m = msg[out * RRLWR_N / 8 + i];
-    uint32_t c0 = (3 - (((uint32_t)acc[k + 0] + 2) & 0x7ff) / 256 - ((m & 1) << 2)) & 7;
-    uint32_t c1 = (3 - (((uint32_t)acc[k + 1] + 2) & 0x7ff) / 256 - (((m >> 1) & 1) << 2)) & 7;
-    uint32_t c2 = (3 - (((uint32_t)acc[k + 2] + 2) & 0x7ff) / 256 - (((m >> 2) & 1) << 2)) & 7;
-    uint32_t c3 = (3 - (((uint32_t)acc[k + 3] + 2) & 0x7ff) / 256 - (((m >> 3) & 1) << 2)) & 7;
-    uint32_t c4 = (3 - (((uint32_t)acc[k + 4] + 2) & 0x7ff) / 256 - (((m >> 4) & 1) << 2)) & 7;
-    uint32_t c5 = (3 - (((uint32_t)acc[k + 5] + 2) & 0x7ff) / 256 - (((m >> 5) & 1) << 2)) & 7;
-    uint32_t c6 = (3 - (((uint32_t)acc[k + 6] + 2) & 0x7ff) / 256 - (((m >> 6) & 1) << 2)) & 7;
-    uint32_t c7 = (3 - (((uint32_t)acc[k + 7] + 2) & 0x7ff) / 256 - ((m >> 7) << 2)) & 7;
+    pack_scalar_t m = msg[out * RRLWR_N / 8 + i];
+    pack_scalar_t c0 = PACK_SCALAR((3 - (((PACK_ACC(acc[k + 0]) + 2) & 0x7ff) >> 8) - ((m & 1) << 2)) & 7);
+    pack_scalar_t c1 = PACK_SCALAR((3 - (((PACK_ACC(acc[k + 1]) + 2) & 0x7ff) >> 8) - (((m >> 1) & 1) << 2)) & 7);
+    pack_scalar_t c2 = PACK_SCALAR((3 - (((PACK_ACC(acc[k + 2]) + 2) & 0x7ff) >> 8) - (((m >> 2) & 1) << 2)) & 7);
+    pack_scalar_t c3 = PACK_SCALAR((3 - (((PACK_ACC(acc[k + 3]) + 2) & 0x7ff) >> 8) - (((m >> 3) & 1) << 2)) & 7);
+    pack_scalar_t c4 = PACK_SCALAR((3 - (((PACK_ACC(acc[k + 4]) + 2) & 0x7ff) >> 8) - (((m >> 4) & 1) << 2)) & 7);
+    pack_scalar_t c5 = PACK_SCALAR((3 - (((PACK_ACC(acc[k + 5]) + 2) & 0x7ff) >> 8) - (((m >> 5) & 1) << 2)) & 7);
+    pack_scalar_t c6 = PACK_SCALAR((3 - (((PACK_ACC(acc[k + 6]) + 2) & 0x7ff) >> 8) - (((m >> 6) & 1) << 2)) & 7);
+    pack_scalar_t c7 = PACK_SCALAR((3 - (((PACK_ACC(acc[k + 7]) + 2) & 0x7ff) >> 8) - ((m >> 7) << 2)) & 7);
     unsigned int p = 3 * i;
 
     ct[p + 0] = (unsigned char)(c0 | (c1 << 3) | (c2 << 6));
@@ -167,16 +185,16 @@ void poly_pack_ciphertext_t_from_acc_msg(unsigned char *ct,
 #elif RRLWR_PKE_LOGT == 8
   for(unsigned int i = 0; i < RRLWR_N / 8; i++) {
     unsigned int k = 8 * i;
-    uint32_t m = msg[out * RRLWR_N / 8 + i];
+    pack_scalar_t m = msg[out * RRLWR_N / 8 + i];
 
-    ct[k + 0] = (unsigned char)((127 - ((((uint32_t)acc[k + 0] + 2) & 0x7ff) >> 3) - ((m & 1) << 7)) & 0xff);
-    ct[k + 1] = (unsigned char)((127 - ((((uint32_t)acc[k + 1] + 2) & 0x7ff) >> 3) - (((m >> 1) & 1) << 7)) & 0xff);
-    ct[k + 2] = (unsigned char)((127 - ((((uint32_t)acc[k + 2] + 2) & 0x7ff) >> 3) - (((m >> 2) & 1) << 7)) & 0xff);
-    ct[k + 3] = (unsigned char)((127 - ((((uint32_t)acc[k + 3] + 2) & 0x7ff) >> 3) - (((m >> 3) & 1) << 7)) & 0xff);
-    ct[k + 4] = (unsigned char)((127 - ((((uint32_t)acc[k + 4] + 2) & 0x7ff) >> 3) - (((m >> 4) & 1) << 7)) & 0xff);
-    ct[k + 5] = (unsigned char)((127 - ((((uint32_t)acc[k + 5] + 2) & 0x7ff) >> 3) - (((m >> 5) & 1) << 7)) & 0xff);
-    ct[k + 6] = (unsigned char)((127 - ((((uint32_t)acc[k + 6] + 2) & 0x7ff) >> 3) - (((m >> 6) & 1) << 7)) & 0xff);
-    ct[k + 7] = (unsigned char)((127 - ((((uint32_t)acc[k + 7] + 2) & 0x7ff) >> 3) - ((m >> 7) << 7)) & 0xff);
+    ct[k + 0] = (unsigned char)((127 - (((PACK_ACC(acc[k + 0]) + 2) & 0x7ff) >> 3) - ((m & 1) << 7)) & 0xff);
+    ct[k + 1] = (unsigned char)((127 - (((PACK_ACC(acc[k + 1]) + 2) & 0x7ff) >> 3) - (((m >> 1) & 1) << 7)) & 0xff);
+    ct[k + 2] = (unsigned char)((127 - (((PACK_ACC(acc[k + 2]) + 2) & 0x7ff) >> 3) - (((m >> 2) & 1) << 7)) & 0xff);
+    ct[k + 3] = (unsigned char)((127 - (((PACK_ACC(acc[k + 3]) + 2) & 0x7ff) >> 3) - (((m >> 3) & 1) << 7)) & 0xff);
+    ct[k + 4] = (unsigned char)((127 - (((PACK_ACC(acc[k + 4]) + 2) & 0x7ff) >> 3) - (((m >> 4) & 1) << 7)) & 0xff);
+    ct[k + 5] = (unsigned char)((127 - (((PACK_ACC(acc[k + 5]) + 2) & 0x7ff) >> 3) - (((m >> 5) & 1) << 7)) & 0xff);
+    ct[k + 6] = (unsigned char)((127 - (((PACK_ACC(acc[k + 6]) + 2) & 0x7ff) >> 3) - (((m >> 6) & 1) << 7)) & 0xff);
+    ct[k + 7] = (unsigned char)((127 - (((PACK_ACC(acc[k + 7]) + 2) & 0x7ff) >> 3) - ((m >> 7) << 7)) & 0xff);
   }
 #else
   unsigned int acc_shift = 0;
@@ -202,22 +220,22 @@ void poly_pack_message_from_acc_cm(unsigned char *m,
 #if RRLWR_PKE_LOGT == 3
   for(unsigned int i = 0; i < RRLWR_N / 8; i++) {
     unsigned int k = 8 * i;
-    uint32_t c0 = cm[3 * i + 0] & 0x7;
-    uint32_t c1 = (cm[3 * i + 0] >> 3) & 0x7;
-    uint32_t c2 = ((cm[3 * i + 0] >> 6) | (cm[3 * i + 1] << 2)) & 0x7;
-    uint32_t c3 = (cm[3 * i + 1] >> 1) & 0x7;
-    uint32_t c4 = (cm[3 * i + 1] >> 4) & 0x7;
-    uint32_t c5 = ((cm[3 * i + 1] >> 7) | (cm[3 * i + 2] << 1)) & 0x7;
-    uint32_t c6 = (cm[3 * i + 2] >> 2) & 0x7;
-    uint32_t c7 = cm[3 * i + 2] >> 5;
-    uint32_t b0 = ((((((uint32_t)acc[k + 0] & 0x7ff) - ((3 - c0) << 8) + 126) & 0x7ff) + 512) >> 10) & 1;
-    uint32_t b1 = ((((((uint32_t)acc[k + 1] & 0x7ff) - ((3 - c1) << 8) + 126) & 0x7ff) + 512) >> 10) & 1;
-    uint32_t b2 = ((((((uint32_t)acc[k + 2] & 0x7ff) - ((3 - c2) << 8) + 126) & 0x7ff) + 512) >> 10) & 1;
-    uint32_t b3 = ((((((uint32_t)acc[k + 3] & 0x7ff) - ((3 - c3) << 8) + 126) & 0x7ff) + 512) >> 10) & 1;
-    uint32_t b4 = ((((((uint32_t)acc[k + 4] & 0x7ff) - ((3 - c4) << 8) + 126) & 0x7ff) + 512) >> 10) & 1;
-    uint32_t b5 = ((((((uint32_t)acc[k + 5] & 0x7ff) - ((3 - c5) << 8) + 126) & 0x7ff) + 512) >> 10) & 1;
-    uint32_t b6 = ((((((uint32_t)acc[k + 6] & 0x7ff) - ((3 - c6) << 8) + 126) & 0x7ff) + 512) >> 10) & 1;
-    uint32_t b7 = ((((((uint32_t)acc[k + 7] & 0x7ff) - ((3 - c7) << 8) + 126) & 0x7ff) + 512) >> 10) & 1;
+    pack_scalar_t c0 = cm[3 * i + 0] & 0x7;
+    pack_scalar_t c1 = (cm[3 * i + 0] >> 3) & 0x7;
+    pack_scalar_t c2 = ((cm[3 * i + 0] >> 6) | (cm[3 * i + 1] << 2)) & 0x7;
+    pack_scalar_t c3 = (cm[3 * i + 1] >> 1) & 0x7;
+    pack_scalar_t c4 = (cm[3 * i + 1] >> 4) & 0x7;
+    pack_scalar_t c5 = ((cm[3 * i + 1] >> 7) | (cm[3 * i + 2] << 1)) & 0x7;
+    pack_scalar_t c6 = (cm[3 * i + 2] >> 2) & 0x7;
+    pack_scalar_t c7 = cm[3 * i + 2] >> 5;
+    pack_scalar_t b0 = PACK_SCALAR((((((PACK_ACC(acc[k + 0]) & 0x7ff) - ((3 - c0) << 8) + 126) & 0x7ff) + 512) >> 10) & 1);
+    pack_scalar_t b1 = PACK_SCALAR((((((PACK_ACC(acc[k + 1]) & 0x7ff) - ((3 - c1) << 8) + 126) & 0x7ff) + 512) >> 10) & 1);
+    pack_scalar_t b2 = PACK_SCALAR((((((PACK_ACC(acc[k + 2]) & 0x7ff) - ((3 - c2) << 8) + 126) & 0x7ff) + 512) >> 10) & 1);
+    pack_scalar_t b3 = PACK_SCALAR((((((PACK_ACC(acc[k + 3]) & 0x7ff) - ((3 - c3) << 8) + 126) & 0x7ff) + 512) >> 10) & 1);
+    pack_scalar_t b4 = PACK_SCALAR((((((PACK_ACC(acc[k + 4]) & 0x7ff) - ((3 - c4) << 8) + 126) & 0x7ff) + 512) >> 10) & 1);
+    pack_scalar_t b5 = PACK_SCALAR((((((PACK_ACC(acc[k + 5]) & 0x7ff) - ((3 - c5) << 8) + 126) & 0x7ff) + 512) >> 10) & 1);
+    pack_scalar_t b6 = PACK_SCALAR((((((PACK_ACC(acc[k + 6]) & 0x7ff) - ((3 - c6) << 8) + 126) & 0x7ff) + 512) >> 10) & 1);
+    pack_scalar_t b7 = PACK_SCALAR((((((PACK_ACC(acc[k + 7]) & 0x7ff) - ((3 - c7) << 8) + 126) & 0x7ff) + 512) >> 10) & 1);
 
     m[i] = (unsigned char)(b0 | (b1 << 1) | (b2 << 2) | (b3 << 3) |
                            (b4 << 4) | (b5 << 5) | (b6 << 6) | (b7 << 7));
@@ -225,22 +243,22 @@ void poly_pack_message_from_acc_cm(unsigned char *m,
 #elif RRLWR_PKE_LOGT == 8
   for(unsigned int i = 0; i < RRLWR_N / 8; i++) {
     unsigned int k = 8 * i;
-    uint32_t c0 = cm[k + 0];
-    uint32_t c1 = cm[k + 1];
-    uint32_t c2 = cm[k + 2];
-    uint32_t c3 = cm[k + 3];
-    uint32_t c4 = cm[k + 4];
-    uint32_t c5 = cm[k + 5];
-    uint32_t c6 = cm[k + 6];
-    uint32_t c7 = cm[k + 7];
-    uint32_t b0 = ((((((uint32_t)acc[k + 0] & 0x7ff) - ((127 - c0) << 3) + 2) & 0x7ff) + 512) >> 10) & 1;
-    uint32_t b1 = ((((((uint32_t)acc[k + 1] & 0x7ff) - ((127 - c1) << 3) + 2) & 0x7ff) + 512) >> 10) & 1;
-    uint32_t b2 = ((((((uint32_t)acc[k + 2] & 0x7ff) - ((127 - c2) << 3) + 2) & 0x7ff) + 512) >> 10) & 1;
-    uint32_t b3 = ((((((uint32_t)acc[k + 3] & 0x7ff) - ((127 - c3) << 3) + 2) & 0x7ff) + 512) >> 10) & 1;
-    uint32_t b4 = ((((((uint32_t)acc[k + 4] & 0x7ff) - ((127 - c4) << 3) + 2) & 0x7ff) + 512) >> 10) & 1;
-    uint32_t b5 = ((((((uint32_t)acc[k + 5] & 0x7ff) - ((127 - c5) << 3) + 2) & 0x7ff) + 512) >> 10) & 1;
-    uint32_t b6 = ((((((uint32_t)acc[k + 6] & 0x7ff) - ((127 - c6) << 3) + 2) & 0x7ff) + 512) >> 10) & 1;
-    uint32_t b7 = ((((((uint32_t)acc[k + 7] & 0x7ff) - ((127 - c7) << 3) + 2) & 0x7ff) + 512) >> 10) & 1;
+    pack_scalar_t c0 = cm[k + 0];
+    pack_scalar_t c1 = cm[k + 1];
+    pack_scalar_t c2 = cm[k + 2];
+    pack_scalar_t c3 = cm[k + 3];
+    pack_scalar_t c4 = cm[k + 4];
+    pack_scalar_t c5 = cm[k + 5];
+    pack_scalar_t c6 = cm[k + 6];
+    pack_scalar_t c7 = cm[k + 7];
+    pack_scalar_t b0 = PACK_SCALAR((((((PACK_ACC(acc[k + 0]) & 0x7ff) - ((127 - c0) << 3) + 2) & 0x7ff) + 512) >> 10) & 1);
+    pack_scalar_t b1 = PACK_SCALAR((((((PACK_ACC(acc[k + 1]) & 0x7ff) - ((127 - c1) << 3) + 2) & 0x7ff) + 512) >> 10) & 1);
+    pack_scalar_t b2 = PACK_SCALAR((((((PACK_ACC(acc[k + 2]) & 0x7ff) - ((127 - c2) << 3) + 2) & 0x7ff) + 512) >> 10) & 1);
+    pack_scalar_t b3 = PACK_SCALAR((((((PACK_ACC(acc[k + 3]) & 0x7ff) - ((127 - c3) << 3) + 2) & 0x7ff) + 512) >> 10) & 1);
+    pack_scalar_t b4 = PACK_SCALAR((((((PACK_ACC(acc[k + 4]) & 0x7ff) - ((127 - c4) << 3) + 2) & 0x7ff) + 512) >> 10) & 1);
+    pack_scalar_t b5 = PACK_SCALAR((((((PACK_ACC(acc[k + 5]) & 0x7ff) - ((127 - c5) << 3) + 2) & 0x7ff) + 512) >> 10) & 1);
+    pack_scalar_t b6 = PACK_SCALAR((((((PACK_ACC(acc[k + 6]) & 0x7ff) - ((127 - c6) << 3) + 2) & 0x7ff) + 512) >> 10) & 1);
+    pack_scalar_t b7 = PACK_SCALAR((((((PACK_ACC(acc[k + 7]) & 0x7ff) - ((127 - c7) << 3) + 2) & 0x7ff) + 512) >> 10) & 1);
 
     m[i] = (unsigned char)(b0 | (b1 << 1) | (b2 << 2) | (b3 << 3) |
                            (b4 << 4) | (b5 << 5) | (b6 << 6) | (b7 << 7));
