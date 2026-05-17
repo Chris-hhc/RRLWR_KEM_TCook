@@ -6,6 +6,8 @@ test/test_KEM*
 test/unit_tests_KEM*
 test/test_speed_KEM*
 test/profile_KEM*
+test/test_poly_mul*
+!test/test_poly_mul.c
 !test/test_KEM.c
 !test/unit_tests_KEM.c
 !test/test_speed_KEM.c
