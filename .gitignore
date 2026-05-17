@@ -12,6 +12,8 @@ test/test_speed_KEM128
 test/test_speed_KEM256
 test/test_speed_KEM512
 test/profile_KEM*
+test/test_poly_mul*
+!test/test_poly_mul.c
 
 # KAT binaries
 KAT/KAT_KEM*
