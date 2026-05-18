@@ -202,7 +202,7 @@ cd ../kyber/ref && ./test/test_speed1024
 | PKE keygen | 246,300 | **209,232** | Kyber1024 |
 | PKE encrypt | 300,458 | **234,806** | Kyber1024 |
 | PKE decrypt | 54,102 | **52,606** | Kyber1024 |
-| KEM keygen | **191,020** | 258,106 | RRLWR-256 |
+| KEM keygen | 267,788 | **258,106** | Kyber1024 |
 | KEM encaps | **225,292** | 253,662 | RRLWR-256 |
 | KEM decaps | **262,670** | 314,104 | RRLWR-256 |
 
