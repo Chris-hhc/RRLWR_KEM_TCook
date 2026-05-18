@@ -199,12 +199,12 @@ cd ../kyber/ref && ./test/test_speed1024
 
 | Stage | RRLWR-256 (median cycles) | Kyber1024 (median cycles) | Faster |
 | --- | ---: | ---: | --- |
-| PKE keygen | 246,300 | **209,232** | Kyber1024 |
-| PKE encrypt | 300,458 | **234,806** | Kyber1024 |
-| PKE decrypt | 54,102 | **52,606** | Kyber1024 |
-| KEM keygen | 267,788 | **258,106** | Kyber1024 |
-| KEM encaps | **225,292** | 253,662 | RRLWR-256 |
-| KEM decaps | **262,670** | 314,104 | RRLWR-256 |
+| PKE keygen | 246,322 | **209,232** | Kyber1024 |
+| PKE encrypt | 299,974 | **234,806** | Kyber1024 |
+| PKE decrypt | 54,362 | **52,606** | Kyber1024 |
+| KEM keygen | 268,368 | **258,106** | Kyber1024 |
+| KEM encaps | 316,456 | **253,662** | Kyber1024 |
+| KEM decaps | **263,000** | 314,104 | RRLWR-256 |
 
 ## RRLWR-512 Standalone
 
