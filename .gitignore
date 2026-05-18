@@ -17,6 +17,7 @@ test/test_poly_mul*
 
 # KAT binaries
 KAT/KAT_KEM*
+!KAT/KAT_KEM.c
 
 # Local profiling / perf artifacts
 test/perf.data
