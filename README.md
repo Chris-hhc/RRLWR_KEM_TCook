@@ -45,6 +45,28 @@ CPU information was collected with `lscpu` on each benchmark machine.
 | Hypervisor | Xen |
 | AVX2 | supported |
 
+### Additional machine: Intel Xeon Platinum 8475B (Sapphire Rapids)
+
+| Field | Value |
+| --- | --- |
+| Architecture | x86_64 |
+| CPU model | Intel(R) Xeon(R) Platinum 8475B |
+| Microarchitecture | **Sapphire Rapids** (Xeon Platinum 8400, family 6, model 143) |
+| CPUs | 192 (2 sockets × 48 cores × 2 threads) |
+| Cores per socket | 48 |
+| Threads per core | 2 |
+| Socket(s) | 2 |
+| L1d cache | 4.5 MiB (96 instances) |
+| L1i cache | 3 MiB (96 instances) |
+| L2 cache | 192 MiB (96 instances) |
+| L3 cache | 195 MiB (2 instances) |
+| NUMA nodes | 2 |
+| Host | SYS-421GE-TNRT (bare metal) |
+| AVX-512 | supported |
+
+The Platinum 8475B results use the same default `Makefile` flags, including
+`-mtune=sapphirerapids`, which matches this microarchitecture.
+
 The E5-2666 v3 results were measured on **Haswell-EP**, one generation older than
 the reference **Broadwell-EP** E5-2686 v4, with smaller caches and SMT enabled
 under Xen. Absolute cycle counts are not directly comparable across machines;
@@ -54,12 +76,42 @@ relative rankings (which implementation is faster) are still useful.
 
 All cycle counts in the tables below are **medians**, not averages.
 
+Build speed binaries from this directory with the project `Makefile` (default
+`CFLAGS` below). Rebuild after changing flags:
+
+```sh
+make clean && make speed
+```
+
+### Compile flags (default `Makefile`)
+
+| Flag | Role |
+| --- | --- |
+| `-O3` | Maximum optimization |
+| `-march=x86-64-v3` | Baseline ISA with AVX2, BMI1, BMI2, FMA, etc. (no AVX-512 requirement) |
+| `-mtune=sapphirerapids` | Instruction scheduling tuned for Sapphire Rapids |
+| `-mprefer-vector-width=256` | Prefer 256-bit SIMD over wider vectors |
+| `-fomit-frame-pointer` | Omit frame pointers (smaller/faster code) |
+| `-fno-stack-protector` | Disable stack canaries for benchmark builds |
+| `-DNDEBUG` | Disable `assert` and other debug checks |
+
+Equivalent excerpt from `Makefile`:
+
+```makefile
+CFLAGS += -O3
+CFLAGS += -march=x86-64-v3
+CFLAGS += -mtune=sapphirerapids
+CFLAGS += -mprefer-vector-width=256
+CFLAGS += -fomit-frame-pointer -fno-stack-protector -DNDEBUG
+```
+
 Run each speed binary **one at a time** on an otherwise idle machine. Running
 multiple benchmarks in parallel (or back-to-back under load) inflates cycle
 counts and is not representative.
 
 Kyber timings use `indcpa_keypair` / `indcpa_enc` / `indcpa_dec` for PKE and
-`kyber_keypair` / `kyber_encaps` / `kyber_decaps` for KEM.
+`kyber_keypair` / `kyber_encaps` / `kyber_decaps` for KEM. Build Kyber ref
+speed tests with the same optimization level when comparing cycle counts.
 
 Correctness on the E5-2666 v3 machine was verified with:
 
@@ -82,23 +134,34 @@ cd ../kyber/ref && ./test/test_speed512
 
 | Stage | RRLWR-128 (median cycles) | Kyber512 (median cycles) | Faster |
 | --- | ---: | ---: | --- |
-| PKE keygen | **80,255** | 83,969 | RRLWR-128 |
-| PKE encrypt | **93,730** | 111,796 | RRLWR-128 |
-| PKE decrypt | **13,877** | 38,003 | RRLWR-128 |
-| KEM keygen | 100,860 | **98,689** | Kyber512 |
-| KEM encaps | **107,272** | 123,047 | RRLWR-128 |
-| KEM decaps | **118,865** | 161,068 | RRLWR-128 |
+| PKE keygen | **78,872** | 83,969 | RRLWR-128 |
+| PKE encrypt | **91,887** | 111,796 | RRLWR-128 |
+| PKE decrypt | **13,555** | 38,003 | RRLWR-128 |
+| KEM keygen | 98,732 | **98,689** | Kyber512 |
+| KEM encaps | **105,328** | 123,047 | RRLWR-128 |
+| KEM decaps | **116,503** | 161,068 | RRLWR-128 |
 
 ### E5-2666 v3 / Haswell-EP
 
 | Stage | RRLWR-128 (median cycles) | Kyber512 (median cycles) | Faster |
 | --- | ---: | ---: | --- |
-| PKE keygen | **68,201** | 84,168 | RRLWR-128 |
-| PKE encrypt | **79,814** | 112,223 | RRLWR-128 |
-| PKE decrypt | **11,625** | 36,823 | RRLWR-128 |
-| KEM keygen | **85,962** | 99,036 | RRLWR-128 |
-| KEM encaps | **91,383** | 122,168 | RRLWR-128 |
-| KEM decaps | **100,961** | 159,191 | RRLWR-128 |
+| PKE keygen | **67,677** | 84,168 | RRLWR-128 |
+| PKE encrypt | **78,884** | 112,223 | RRLWR-128 |
+| PKE decrypt | **11,604** | 36,823 | RRLWR-128 |
+| KEM keygen | **84,899** | 99,036 | RRLWR-128 |
+| KEM encaps | **90,492** | 122,168 | RRLWR-128 |
+| KEM decaps | **99,863** | 159,191 | RRLWR-128 |
+
+### Xeon Platinum 8475B / Sapphire Rapids
+
+| Stage | RRLWR-128 (median cycles) | Kyber512 (median cycles) | Faster |
+| --- | ---: | ---: | --- |
+| PKE keygen | 86,102 | **82,400** | Kyber512 |
+| PKE encrypt | 102,536 | **100,510** | Kyber512 |
+| PKE decrypt | **16,566** | 33,422 | RRLWR-128 |
+| KEM keygen | 102,628 | **99,632** | Kyber512 |
+| KEM encaps | 113,434 | **110,344** | Kyber512 |
+| KEM decaps | **127,620** | 143,712 | RRLWR-128 |
 
 ## RRLWR-256 vs Kyber1024
 
@@ -114,23 +177,34 @@ cd ../kyber/ref && ./test/test_speed1024
 
 | Stage | RRLWR-256 (median cycles) | Kyber1024 (median cycles) | Faster |
 | --- | ---: | ---: | --- |
-| PKE keygen | **219,289** | 219,185 | RRLWR-256 |
-| PKE encrypt | 264,350 | **258,425** | Kyber1024 |
-| PKE decrypt | **46,206** | 63,337 | RRLWR-256 |
-| KEM keygen | **248,376** | 255,353 | RRLWR-256 |
-| KEM encaps | 285,234 | **275,709** | Kyber1024 |
-| KEM decaps | **328,823** | 352,585 | RRLWR-256 |
+| PKE keygen | **215,891** | 219,185 | RRLWR-256 |
+| PKE encrypt | 260,097 | **258,425** | Kyber1024 |
+| PKE decrypt | **45,286** | 63,337 | RRLWR-256 |
+| KEM keygen | **243,355** | 255,353 | RRLWR-256 |
+| KEM encaps | 281,974 | **275,709** | Kyber1024 |
+| KEM decaps | **325,312** | 352,585 | RRLWR-256 |
 
 ### E5-2666 v3 / Haswell-EP
 
 | Stage | RRLWR-256 (median cycles) | Kyber1024 (median cycles) | Faster |
 | --- | ---: | ---: | --- |
-| PKE keygen | **186,504** | 222,948 | RRLWR-256 |
-| PKE encrypt | **225,532** | 280,814 | RRLWR-256 |
-| PKE decrypt | **38,897** | 60,425 | RRLWR-256 |
-| KEM keygen | **210,411** | 260,612 | RRLWR-256 |
-| KEM encaps | **243,088** | 293,800 | RRLWR-256 |
-| KEM decaps | **280,344** | 361,090 | RRLWR-256 |
+| PKE keygen | **185,648** | 222,948 | RRLWR-256 |
+| PKE encrypt | **223,647** | 280,814 | RRLWR-256 |
+| PKE decrypt | **38,814** | 60,425 | RRLWR-256 |
+| KEM keygen | **208,785** | 260,612 | RRLWR-256 |
+| KEM encaps | **241,148** | 293,800 | RRLWR-256 |
+| KEM decaps | **278,105** | 361,090 | RRLWR-256 |
+
+### Xeon Platinum 8475B / Sapphire Rapids
+
+| Stage | RRLWR-256 (median cycles) | Kyber1024 (median cycles) | Faster |
+| --- | ---: | ---: | --- |
+| PKE keygen | 246,300 | **209,232** | Kyber1024 |
+| PKE encrypt | 300,458 | **234,806** | Kyber1024 |
+| PKE decrypt | 54,102 | **52,606** | Kyber1024 |
+| KEM keygen | **191,020** | 258,106 | RRLWR-256 |
+| KEM encaps | **225,292** | 253,662 | RRLWR-256 |
+| KEM decaps | **262,670** | 314,104 | RRLWR-256 |
 
 ## RRLWR-512 Standalone
 
@@ -144,30 +218,46 @@ Command:
 
 | Stage | Median cycles |
 | --- | ---: |
-| poly_mul_toom4 | 2,356 |
-| ring_mul full | 673,348 |
-| ring_mul_Awin full | 680,574 |
-| ring_mul 1 coefficient | 40,048 |
-| ring_mul_Awin 1 coefficient | 39,637 |
-| PKE keygen | 731,765 |
-| PKE encrypt | 894,538 |
-| PKE decrypt | 165,226 |
-| KEM keygen | 777,336 |
-| KEM encaps | 932,767 |
-| KEM decaps | 1,108,791 |
+| poly_mul_toom4 | 2,297 |
+| ring_mul full | 669,822 |
+| ring_mul_Awin full | 668,172 |
+| ring_mul 1 coefficient | 39,711 |
+| ring_mul_Awin 1 coefficient | 39,226 |
+| PKE keygen | 724,028 |
+| PKE encrypt | 886,531 |
+| PKE decrypt | 164,313 |
+| KEM keygen | 765,312 |
+| KEM encaps | 926,005 |
+| KEM decaps | 1,099,750 |
 
 ### E5-2666 v3 / Haswell-EP
 
 | Stage | Median cycles |
 | --- | ---: |
-| poly_mul_toom4 | 2,061 |
-| ring_mul full | 595,605 |
-| ring_mul_Awin full | 580,690 |
-| ring_mul 1 coefficient | 34,299 |
-| ring_mul_Awin 1 coefficient | 34,162 |
-| PKE keygen | 617,169 |
-| PKE encrypt | 773,033 |
-| PKE decrypt | 202,146 |
-| KEM keygen | 653,259 |
-| KEM encaps | 801,526 |
-| KEM decaps | 954,137 |
+| poly_mul_toom4 | 1,995 |
+| ring_mul full | 571,846 |
+| ring_mul_Awin full | 580,771 |
+| ring_mul 1 coefficient | 57,682 |
+| ring_mul_Awin 1 coefficient | 53,278 |
+| PKE keygen | 615,543 |
+| PKE encrypt | 773,828 |
+| PKE decrypt | 140,541 |
+| KEM keygen | 650,622 |
+| KEM encaps | 801,115 |
+| KEM decaps | 941,753 |
+
+### Xeon Platinum 8475B / Sapphire Rapids
+
+| Stage | Median cycles |
+| --- | ---: |
+| poly_mul_toom4 | 3,162 |
+| ring_mul full | 791,090 |
+| ring_mul_Awin full | 567,026 |
+| ring_mul 1 coefficient | 36,484 |
+| ring_mul_Awin 1 coefficient | 32,970 |
+| PKE keygen | 588,826 |
+| PKE encrypt | 727,604 |
+| PKE decrypt | 138,780 |
+| KEM keygen | 612,010 |
+| KEM encaps | 747,470 |
+| KEM decaps | 887,086 |

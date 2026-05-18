@@ -1,7 +1,12 @@
 CC = gcc
+# CFLAGS += -O3
+# CFLAGS += -Wall -Wextra -Wpedantic -Wmissing-prototypes -Wredundant-decls \
+#   -Wshadow -Wpointer-arith -fomit-frame-pointer
 CFLAGS += -O3
-CFLAGS += -Wall -Wextra -Wpedantic -Wmissing-prototypes -Wredundant-decls \
-  -Wshadow -Wpointer-arith -fomit-frame-pointer
+CFLAGS += -march=x86-64-v3
+CFLAGS += -mtune=sapphirerapids
+CFLAGS += -mprefer-vector-width=256
+CFLAGS += -fomit-frame-pointer -fno-stack-protector -DNDEBUG
 PACKING_FLAGS ?=
 RM = /bin/rm
 
